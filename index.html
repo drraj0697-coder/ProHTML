@@ -323,11 +323,20 @@ function render(){
   const bk=$('#back');if(bk)bk.onclick=()=>{S.path.pop();render();$('#home').scrollTop=0};
   const t=$('#tipX');if(t)t.onclick=()=>{S.tip=true;LS.set('tipHidden',true);render()}}
 
+const savedCustomModule=()=>S.files.find(f=>f&&f.customModuleTest===true);
 function renderCustomModule(v){
-  v.innerHTML='<div class="card"><div class="empty"><b>Marrow Custom Module</b>Build a test by subject, topic and exact question count. It uses the selected static Marrow Edition 8 qBank JSON source and opens the result in the reference-format test runner.<br><button class="big" id="openCustomModule">'+ico('open')+'Open Custom Module Maker</button></div></div><div class="tip"><span>Keep Network Access allowed for the chosen static source. Use the Reader toolbar’s new font-size slider after opening the maker or test.</span></div>';
+  const saved=savedCustomModule();
+  if(saved){
+    v.innerHTML='<div class="card"><div class="empty"><b>Saved Custom Module</b><span>'+esc(clean(saved.name))+'</span><br>This module is saved in <b>My HTML → Custom Modules</b> and can be reviewed later. Delete it before creating another custom module.<br><button class="big" id="reviewSavedModule">'+ico('open')+'Review saved test</button><br><button class="crumb" id="deleteSavedModule" style="color:var(--bad)">'+ico('trash')+'Delete saved test and unlock maker</button></div></div><div class="tip"><span>Use the Reader toolbar’s Font Size slider while reviewing. The saved test keeps its reference-runner state on this device.</span></div>';
+    $('#reviewSavedModule').onclick=()=>openFile(saved.id);
+    $('#deleteSavedModule').onclick=()=>{if(confirm('Delete this saved custom module? You must build a new one after deleting it.'))removeFile(saved.id)};
+    return;
+  }
+  v.innerHTML='<div class="card"><div class="empty"><b>Marrow Custom Module</b>Build a test by subject, topic and exact question count. Topics are grouped subject by subject, and every built test is saved in HTML Reader for later review.<br><button class="big" id="openCustomModule">'+ico('open')+'Open Custom Module Maker</button></div></div><div class="tip"><span>Keep Network Access allowed for the chosen static source. Use the Reader toolbar’s font-size slider after opening the maker or test.</span></div>';
   $('#openCustomModule').onclick=openCustomModule;
 }
 async function openCustomModule(){
+  if(savedCustomModule()){toast('Delete the saved custom module before creating another.');render();return}
   try{
     toast('Opening Custom Module Maker…');
     const result=await fetch('custom-module.html',{cache:'no-store'});
@@ -340,6 +349,23 @@ async function openCustomModule(){
     setMode(S.mode,true);await loadFrame();
   }catch(error){toast('Could not open Custom Module: '+(error.message||'unknown error'))}
 }
+function customModuleFileName(value){
+  const name=String(value||'Marrow Custom Module').replace(/[<>:"\/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,86)||'Marrow Custom Module';
+  return name.replace(/\.html?$/i,'')+'.html';
+}
+addEventListener('message',async event=>{
+  const data=event.data,frame=$('#rframe iframe');
+  if(!data||data.type!=='html-reader-save-custom-module'||!S.cur?.builtin||event.source!==frame?.contentWindow)return;
+  if(savedCustomModule()){toast('A saved custom module already exists. Delete it before creating another.');return}
+  if(typeof data.html!=='string'||data.html.length<500){toast('The generated custom module was incomplete.');return}
+  try{
+    const blob=new Blob([data.html],{type:'text/html;charset=utf-8'});
+    const f={id:uid(),name:customModuleFileName(data.name),rel:['Custom Modules'],size:blob.size,blob,fav:false,added:Date.now(),meta:undefined,customModuleTest:true};
+    S.files.push(f);await DB.put(f);
+    toast('Saved in My HTML → Custom Modules. Delete it before building another.');
+    await openFile(f.id);scanAll();
+  }catch(error){toast('Could not save the custom module: '+(error.message||'unknown error'))}
+});
 
 function renderSettings(v){
   const total=S.files.reduce((s,f)=>s+f.size,0);
