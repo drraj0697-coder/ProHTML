@@ -158,20 +158,20 @@ body.dropping #dropov{display:grid}
 
 /* ---------- iOS liquid-glass look ---------- */
 :root{
-  --glass:linear-gradient(135deg,rgba(255,255,255,.66),rgba(255,255,255,.32));
+  --glass:linear-gradient(135deg,rgba(255,255,255,.34),rgba(255,255,255,.12));
   --glass-edge:rgba(255,255,255,.75);--glass-edge2:rgba(255,255,255,.18);--glass-hi:rgba(255,255,255,.85);
-  --glass-shadow:0 12px 36px rgba(30,30,60,.18),0 2px 8px rgba(30,30,60,.08);
-  --glass-press:rgba(120,120,140,.22);--glass-sel:rgba(255,255,255,.75);--glass-line:rgba(120,120,140,.28);--glass-chip:rgba(255,255,255,.42)}
+  --glass-shadow:0 12px 24px -12px rgba(30,30,60,.30);
+  --glass-press:rgba(120,120,140,.22);--glass-sel:rgba(255,255,255,.55);--glass-line:rgba(120,120,140,.28);--glass-chip:rgba(255,255,255,.26)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --glass:linear-gradient(135deg,rgba(90,90,100,.52),rgba(36,36,42,.38));
+  --glass:linear-gradient(135deg,rgba(90,90,100,.30),rgba(36,36,42,.16));
   --glass-edge:rgba(255,255,255,.30);--glass-edge2:rgba(255,255,255,.06);--glass-hi:rgba(255,255,255,.35);
-  --glass-shadow:0 12px 36px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
-  --glass-press:rgba(255,255,255,.14);--glass-sel:rgba(255,255,255,.20);--glass-line:rgba(255,255,255,.16);--glass-chip:rgba(255,255,255,.12)}}
+  --glass-shadow:0 12px 24px -12px rgba(0,0,0,.65);
+  --glass-press:rgba(255,255,255,.14);--glass-sel:rgba(255,255,255,.20);--glass-line:rgba(255,255,255,.16);--glass-chip:rgba(255,255,255,.09)}}
 :root[data-theme="dark"]{
-  --glass:linear-gradient(135deg,rgba(90,90,100,.52),rgba(36,36,42,.38));
+  --glass:linear-gradient(135deg,rgba(90,90,100,.30),rgba(36,36,42,.16));
   --glass-edge:rgba(255,255,255,.30);--glass-edge2:rgba(255,255,255,.06);--glass-hi:rgba(255,255,255,.35);
-  --glass-shadow:0 12px 36px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
-  --glass-press:rgba(255,255,255,.14);--glass-sel:rgba(255,255,255,.20);--glass-line:rgba(255,255,255,.16);--glass-chip:rgba(255,255,255,.12)}
+  --glass-shadow:0 12px 24px -12px rgba(0,0,0,.65);
+  --glass-press:rgba(255,255,255,.14);--glass-sel:rgba(255,255,255,.20);--glass-line:rgba(255,255,255,.16);--glass-chip:rgba(255,255,255,.09)}
 #rbar,.menu,.tabs,.addpill,.search,.circ{
   background:var(--glass);
   -webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);
@@ -190,6 +190,37 @@ body.dropping #dropov{display:grid}
 .menu hr{border-top-color:var(--glass-line)}
 .tabs button[aria-selected="true"]{background:var(--glass-sel);box-shadow:inset 0 1px 0 var(--glass-hi),0 1px 8px rgba(0,0,0,.12)}
 #toast{background:rgba(40,40,46,.55);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,.22);box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.3)}
+
+/* menu: extra transparency, iOS-style spring popup, hover + press animation */
+:root{--glass-menu:linear-gradient(135deg,rgba(255,255,255,.42),rgba(255,255,255,.14));--glass-hover:rgba(255,255,255,.45)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass-menu:linear-gradient(135deg,rgba(90,90,100,.36),rgba(36,36,42,.20));--glass-hover:rgba(255,255,255,.13)}}
+:root[data-theme="dark"]{--glass-menu:linear-gradient(135deg,rgba(90,90,100,.36),rgba(36,36,42,.20));--glass-hover:rgba(255,255,255,.13)}
+.menu{background:var(--glass-menu);-webkit-backdrop-filter:blur(28px) saturate(200%);backdrop-filter:blur(28px) saturate(200%);transform-origin:top right}
+#layer.center .menu{transform-origin:center}
+@keyframes hrPop{from{opacity:0;transform:scale(.55)}to{opacity:1;transform:scale(1)}}
+@keyframes hrOut{to{opacity:0;transform:scale(.88)}}
+@keyframes hrFade{from{opacity:0}to{opacity:1}}
+@keyframes hrFadeOut{to{opacity:0}}
+@keyframes hrItem{from{opacity:0;transform:translateY(-8px) scale(.94)}to{opacity:1;transform:none}}
+#layer:not([hidden]){animation:hrFade .22s ease backwards}
+.menu:not([hidden]){animation:hrPop .46s cubic-bezier(.34,1.5,.5,1) backwards}
+.menu:not([hidden])>*{animation:hrItem .36s cubic-bezier(.2,.8,.2,1) backwards}
+.menu>:nth-child(1){animation-delay:0.07s}.menu>:nth-child(2){animation-delay:0.10s}.menu>:nth-child(3){animation-delay:0.14s}.menu>:nth-child(4){animation-delay:0.17s}.menu>:nth-child(5){animation-delay:0.21s}.menu>:nth-child(6){animation-delay:0.24s}.menu>:nth-child(7){animation-delay:0.28s}.menu>:nth-child(8){animation-delay:0.31s}.menu>:nth-child(9){animation-delay:0.35s}
+#layer.closing{animation:hrFadeOut .18s ease forwards;pointer-events:none}
+#layer.closing .menu{animation:hrOut .18s ease-in forwards}
+#layer.closing .menu>*{animation:none}
+.menu button{transition:background .2s ease,transform .24s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease}
+.menu button svg.i{transition:transform .24s cubic-bezier(.34,1.56,.64,1)}
+@media (hover:hover){
+  .menu button:hover{background:var(--glass-hover);transform:scale(1.03);box-shadow:inset 0 1px 0 var(--glass-hi),0 6px 16px -6px rgba(0,0,0,.25)}
+  .menu button:hover svg.i:not(.go){transform:scale(1.18) rotate(-5deg)}
+  .menu button:hover svg.go{transform:translateX(4px)}
+  .circ{transition:transform .22s cubic-bezier(.34,1.56,.64,1)}.circ:hover{transform:scale(1.07)}
+}
+.menu button:active{transform:scale(.97)}
+/* keep the status-bar strip completely clean in Adjacent mode */
+#reader[data-mode="adjacent"]::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(8px + env(safe-area-inset-top,0px));background:var(--bg);z-index:6;pointer-events:none}
+@media (prefers-reduced-motion:reduce){#layer,.menu,.menu>*{animation:none!important}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#rbar,.menu,.tabs,.addpill,.search,.circ{background:var(--card)}#toast{background:rgba(30,30,34,.94)}}
 @media (prefers-reduced-transparency:reduce){#rbar,.menu,.tabs,.addpill,.search,.circ,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -653,8 +684,11 @@ $('#rbar').addEventListener('pointerdown',()=>{if($('#reader').classList.contain
 
 /* ---------- menus ---------- */
 let outDown=false;
-function showLayer(center){outDown=false;$('#layer').hidden=false;$('#layer').classList.toggle('center',!!center)}
-function hideMenus(){$('#layer').hidden=true;$('#m2').hidden=true;S.sheet=null}
+let hideT=0;
+function showLayer(center){outDown=false;clearTimeout(hideT);const l=$('#layer');l.classList.remove('closing');l.hidden=false;l.classList.toggle('center',!!center)}
+function hideMenus(){const l=$('#layer');S.sheet=null;if(l.hidden||l.classList.contains('closing'))return;
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){l.hidden=true;$('#m2').hidden=true;return}
+  l.classList.add('closing');clearTimeout(hideT);hideT=setTimeout(()=>{l.hidden=true;l.classList.remove('closing');$('#m2').hidden=true},180)}
 $('#scrim').onclick=hideMenus;
 /* tap anywhere outside the menu = go back (close) */
 $('#layer').addEventListener('pointerdown',e=>{outDown=!e.target.closest('.menu')});
