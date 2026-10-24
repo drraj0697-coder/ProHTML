@@ -1,10 +1,11 @@
 'use strict';
 // Cache names only change the app shell. IndexedDB and localStorage are untouched.
-const V = 'html-reader-liquid-glass-v6';
+const V = 'html-reader-mcq-pyq-search-v2';
 const SHELL = [
   './', 'index.html', 'custom-module.html', 'manifest.webmanifest',
   'icon-180.png', 'icon-192.png', 'icon-512.png',
-  'assets/liquid-glass.css', 'assets/liquid-glass.js'
+  'assets/liquid-glass.css', 'assets/liquid-glass.js',
+  'assets/mcq-search.css', 'assets/mcq-search.js', 'assets/mcq-question-index.json'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(V).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -227,6 +227,7 @@ body.dropping #dropov{display:grid}
 </style>
 <!-- Browser adaptation of liquid_glass_widgets; all assets are local. -->
 <link rel="stylesheet" href="assets/liquid-glass.css">
+<link rel="stylesheet" href="assets/mcq-search.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -296,6 +297,7 @@ body.dropping #dropov{display:grid}
 <input type="file" id="inFiles" multiple accept=".html,.htm,.xhtml,text/html,application/xhtml+xml" hidden>
 
 <script src="assets/liquid-glass.js"></script>
+<script src="assets/mcq-search.js"></script>
 <script>
 'use strict';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -389,8 +391,8 @@ function render(){
   if(S.tab==='custom'){renderCustomModule(v);return}
   let h='',n=0;S.dirList=[];
   if(S.filt!=='all')h+='<button class="crumb" id="clrf">'+ico('chev')+'Show all files</button>';
-  if(S.files.length){const scope=S.tab==='fav'?S.files.filter(f=>f.fav):S.files,cn={all:scope.length,new:0,prog:0,done:0};scope.forEach(f=>{cn[prog(f).k]++});
-    h+='<div class="chips" role="group" aria-label="Filter by status">'+FILT.map(([k,l])=>'<button class="chip" data-filt="'+k+'" aria-pressed="'+(S.filt===k)+'">'+l+' ('+cn[k]+')</button>').join('')+'</div>'}
+  {const scope=S.tab==='fav'?S.files.filter(f=>f.fav):S.files,cn={all:scope.length,new:0,prog:0,done:0};scope.forEach(f=>{cn[prog(f).k]++});
+    h+='<div class="mcq-filter-row"><div class="chips" role="group" aria-label="Filter by status">'+FILT.map(([k,l])=>'<button class="chip" data-filt="'+k+'" aria-pressed="'+(S.filt===k)+'">'+l+' ('+cn[k]+')</button>').join('')+'</div><button id="mcqSearchButton" class="circ mcq-search-trigger" aria-label="Search QBank or PYQ by question code" title="Search QBank or PYQ by question code" aria-haspopup="dialog" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg></button></div>'}
   if(flat){const items=flatList();n=items.length;
     h+=n?'<div class="card">'+items.map(f=>fileRow(f,(relOf(f).length?relOf(f).map(clean).join(' › ')+' · ':'')+fmtSize(f.size))).join('')+'</div>':''}
   else{const {dirs,files}=browse();n=dirs.length+files.length;S.dirList=dirs;
@@ -401,6 +403,7 @@ function render(){
   if(S.tab==='my'&&!standalone()&&isiOS()&&!S.tip&&S.files.length)h+='<div class="tip"><span>Tip: tap Share, then Add to Home Screen, to use this like an app.</span><button id="tipX">Hide</button></div>';
   v.innerHTML=h;
   const b=$('#bigAdd');if(b)b.onclick=addMenu;
+  const tagSearch=$('#mcqSearchButton');if(tagSearch)tagSearch.onclick=e=>{if(mcqLookup)mcqLookup.open(e.currentTarget);else toast('Upload the new MCQ search assets, then reload.');};
   const cf=$('#clrf');if(cf)cf.onclick=()=>{S.filt='all';render();$('#home').scrollTop=0};
   $$('[data-filt]').forEach(c=>c.onclick=()=>{S.filt=(c.dataset.filt===S.filt?'all':c.dataset.filt);render();$('#home').scrollTop=0});
   const bk=$('#back');if(bk)bk.onclick=()=>{S.path.pop();render();$('#home').scrollTop=0};
@@ -463,6 +466,10 @@ function renderSettings(v){
    '<div class="sec"><h2>Storage</h2><div class="card"><div class="set"><span class="lb">'+S.files.length+' file'+(S.files.length===1?'':'s')+'<small>'+fmtSize(total)+' on this device. Files never leave it.</small></span></div>'+
    '<button class="set danger" id="sWipe">Remove all files</button></div></div>'+
    '<div class="sec"><h2>About</h2><div class="card"><div class="set"><span class="lb">'+(standalone()?'Running as an app':'Use it like an app')+'<small>'+(standalone()?'Installed on your Home Screen. Works offline for files you have added.':'In Safari tap Share, then Add to Home Screen.')+'</small></span></div></div></div>';
+  if(mcqLookup){v.insertAdjacentHTML('beforeend','<div class="sec mcq-lookup-settings"><h2>MCQ tag lookup</h2><div class="card"><div class="set"><span class="lb">Remembered answers<small>Searched MCQs are separate from your HTML library and its status filters. Use Try again on a question to reset only that answer.</small></span></div><button class="set danger" id="clearMCQAnswers">Clear MCQ answer history</button><button class="set" id="clearMCQDownloads">Clear downloaded MCQ text</button></div></div>');
+    $('#clearMCQAnswers').onclick=()=>{if(confirm('Clear all remembered tag-search answers? Your library files, normal tests and downloaded MCQ text will stay unchanged.'))try{mcqLookup.clearAnswers();toast('MCQ answer history cleared.')}catch(error){toast('Could not clear MCQ answers: '+error.message)}};
+    $('#clearMCQDownloads').onclick=async()=>{if(confirm('Remove downloaded tag-search MCQ text? Your remembered answers and library files will stay unchanged. First-time lookups will need internet again.'))try{await mcqLookup.clearCache();toast('Downloaded MCQ text cleared.')}catch(error){toast('Could not clear MCQ downloads: '+error.message)}};
+  }
   $('#sDisp').value=S.set.display;$('#sNet').checked=S.set.net;$('#sFix').checked=S.set.fix;$('#sFmt').checked=S.set.fmt;
   $('#sTheme').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;S.set.theme=b.dataset.v;saveSet();applyTheme();render()};
   $('#sDisp').onchange=e=>{S.set.display=e.target.value;saveSet()};
@@ -676,13 +683,15 @@ async function openFile(id){
 async function loadFrame(){
   const f=S.cur;if(!f)return;
   try{
-    const text=decodeBytes(await f.blob.arrayBuffer());
-    S.runner=/const\s+RAW_CFG\s*=/.test(text);
+    if(f.mcqLookup)S.mcqNonce=uid();
+    const text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
+    S.runner=!!f.mcqLookup||/const\s+RAW_CFG\s*=/.test(text);
     const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
-    const url=URL.createObjectURL(new Blob([head?injectHead(text,head):text],{type:'text/html;charset=utf-8'}));
+    const markup=head?injectHead(text,head):text;
+    const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
     if(S.url)URL.revokeObjectURL(S.url);S.url=url;
     const box=$('#rframe');box.innerHTML='';
-    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',applyFont);fr.src=url;box.appendChild(fr);applyFont()
+    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',applyFont);if(f.mcqLookup)fr.srcdoc=markup;else fr.src=url;box.appendChild(fr);applyFont()
   }catch(e){toast('This file could not be opened: '+e.message)}}
 /* Font size: real zoom applied INSIDE the page (re-laid-out and re-rendered at full resolution), so text stays sharp */
 const FONTS=[60,70,80,90,100,110,125,150,175,200,250];
@@ -728,12 +737,31 @@ $('#rbar').addEventListener('pointerdown',()=>{if($('#reader').classList.contain
 const glassMenus=ProGlass.createMenus({layer:$('#layer'),primary:$('#m1'),secondary:$('#m2'),onClose:()=>{S.sheet=null;S.dsel=null}});
 function showLayer(anchor,label){glassMenus.open(anchor,{label:label||'Options'})}
 function hideMenus(restoreFocus=true){glassMenus.close({restoreFocus})}
+
+/* Tag lookups are transient reader views, not library files. Answer keys use their own namespace. */
+const mcqLookup=window.ProMCQSearch?.create({
+  beforeOpen:()=>glassMenus.close({restoreFocus:false,immediate:true}),
+  networkAllowed:()=>S.set.net!==false,
+  onOpen:openLookupQuestion,
+  getActive:()=>S.cur?.mcqLookup?{question:S.cur.mcqQuestion,nonce:S.mcqNonce}:null,
+  getFrame:()=>$('#rframe iframe'),
+  onCloseQuestion:closeReader,
+  toast
+})||null;
+async function openLookupQuestion(question){
+  if(!mcqLookup)return;
+  S.cur={id:'lookup-'+question.code,name:'MCQ '+question.code,mcqLookup:true,mcqQuestion:question,fav:false};
+  S.mode=S.set.display;S.net=S.set.net;
+  $('#rTitle').textContent='MCQ '+question.code;$('#reader').hidden=false;document.body.style.overflow='hidden';
+  setMode(S.mode,true);await loadFrame();$('#rClose').focus({preventScroll:true});
+}
+
 const mi=(act,icon,label,extra)=>'<button data-a="'+act+'">'+(icon?ico(icon):'<span class="tick"></span>')+'<span>'+label+'</span>'+(extra||'')+'</button>';
 const menuHeading=(kind,title)=>'<div class="menu-heading"><p class="eyebrow">'+esc(kind)+'</p><b>'+esc(title)+'</b></div><hr>';
 function readerMenu(event){
   const f=S.cur;if(!f)return;S.sheet=null;S.dsel=null;
   const m1=$('#m1');
-  m1.innerHTML=menuHeading('PAGE OPTIONS',clean(f.name))+mi('fav','star',f.fav?'Remove from Favorites':'Add to Favorites')+mi('reload','reload','Reload')+'<hr>'+mi('disp','disp','Display',ico('chev','go'))+mi('net','net','Network Access',ico('chev','go'))+mi('font','font','Font Size',ico('chev','go'))+'<hr>'+mi('share','share','Share');
+  m1.innerHTML=menuHeading(f.mcqLookup?'MCQ OPTIONS':'PAGE OPTIONS',clean(f.name))+(f.mcqLookup?'':mi('fav','star',f.fav?'Remove from Favorites':'Add to Favorites'))+mi('reload','reload','Reload')+'<hr>'+mi('disp','disp','Display',ico('chev','go'))+mi('net','net','Network Access',ico('chev','go'))+mi('font','font','Font Size',ico('chev','go'))+(f.mcqLookup?'':'<hr>'+mi('share','share','Share'));
   showLayer(event||($('#reader').dataset.mode==='focus'?$('#flMenu'):$('#rMenu')),'Reader options')
 }
 $('#rMenu').onclick=$('#flMenu').onclick=readerMenu;
@@ -794,7 +822,7 @@ function fileSheet(id,anchor){
 
 /* ---------- toast ---------- */
 let tt=0;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600)}
-addEventListener('keydown',e=>{if(e.defaultPrevented)return;if(e.key==='Escape'){if(!$('#layer').hidden)hideMenus();else if($('#reader').hidden&&S.filt!=='all'){S.filt='all';render()}else if(!$('#reader').hidden)closeReader()}});
+addEventListener('keydown',e=>{if(e.defaultPrevented)return;if(e.key==='Escape'){if(mcqLookup?.isOpen){mcqLookup.close();return}if(!$('#layer').hidden)hideMenus();else if($('#reader').hidden&&S.filt!=='all'){S.filt='all';render()}else if(!$('#reader').hidden)closeReader()}});
 
 /* ---------- start ---------- */
 (async function(){
