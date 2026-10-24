@@ -155,6 +155,43 @@ body.dropping #dropov{display:grid}
   .row+.row::before{left:90px}
   .menu{min-width:240px}
 }
+
+/* ---------- iOS liquid-glass look ---------- */
+:root{
+  --glass:linear-gradient(135deg,rgba(255,255,255,.66),rgba(255,255,255,.32));
+  --glass-edge:rgba(255,255,255,.75);--glass-edge2:rgba(255,255,255,.18);--glass-hi:rgba(255,255,255,.85);
+  --glass-shadow:0 12px 36px rgba(30,30,60,.18),0 2px 8px rgba(30,30,60,.08);
+  --glass-press:rgba(120,120,140,.22);--glass-sel:rgba(255,255,255,.75);--glass-line:rgba(120,120,140,.28);--glass-chip:rgba(255,255,255,.42)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --glass:linear-gradient(135deg,rgba(90,90,100,.52),rgba(36,36,42,.38));
+  --glass-edge:rgba(255,255,255,.30);--glass-edge2:rgba(255,255,255,.06);--glass-hi:rgba(255,255,255,.35);
+  --glass-shadow:0 12px 36px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
+  --glass-press:rgba(255,255,255,.14);--glass-sel:rgba(255,255,255,.20);--glass-line:rgba(255,255,255,.16);--glass-chip:rgba(255,255,255,.12)}}
+:root[data-theme="dark"]{
+  --glass:linear-gradient(135deg,rgba(90,90,100,.52),rgba(36,36,42,.38));
+  --glass-edge:rgba(255,255,255,.30);--glass-edge2:rgba(255,255,255,.06);--glass-hi:rgba(255,255,255,.35);
+  --glass-shadow:0 12px 36px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.35);
+  --glass-press:rgba(255,255,255,.14);--glass-sel:rgba(255,255,255,.20);--glass-line:rgba(255,255,255,.16);--glass-chip:rgba(255,255,255,.12)}
+#rbar,.menu,.tabs,.addpill,.search,.circ{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(22px) saturate(190%);backdrop-filter:blur(22px) saturate(190%);
+  border:1px solid var(--glass-edge);
+  box-shadow:var(--glass-shadow),inset 0 1.5px 0 var(--glass-hi),inset 0 -1px 0 var(--glass-edge2),inset 0 0 18px rgba(255,255,255,.08)}
+/* floating toolbar capsule instead of a full-width blurred strip */
+#rbar{left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));height:56px;padding:0 7px;gap:10px;border-radius:30px}
+#rframe{top:calc(72px + env(safe-area-inset-top,0px))}
+#reader.hide-bar #rbar{transform:translateY(calc(-100% - 24px - env(safe-area-inset-top,0px)))}
+#rbar .circ{width:42px;height:42px;background:var(--glass-chip);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:inset 0 1px 0 var(--glass-hi),0 1px 6px rgba(0,0,0,.12)}
+.menus{top:calc(76px + env(safe-area-inset-top,0px))}
+.menu{position:relative;border-radius:30px;padding:8px}
+.menu::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(130% 60% at 18% 0%,rgba(255,255,255,.34),rgba(255,255,255,0) 62%)}
+.menu>*{position:relative}
+.menu button:active,.menu button.on{background:var(--glass-press)}
+.menu hr{border-top-color:var(--glass-line)}
+.tabs button[aria-selected="true"]{background:var(--glass-sel);box-shadow:inset 0 1px 0 var(--glass-hi),0 1px 8px rgba(0,0,0,.12)}
+#toast{background:rgba(40,40,46,.55);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,.22);box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.3)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#rbar,.menu,.tabs,.addpill,.search,.circ{background:var(--card)}#toast{background:rgba(30,30,34,.94)}}
+@media (prefers-reduced-transparency:reduce){#rbar,.menu,.tabs,.addpill,.search,.circ,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -577,16 +614,27 @@ async function loadFrame(){
   const f=S.cur;if(!f)return;
   try{
     const text=decodeBytes(await f.blob.arrayBuffer());
-    const head=(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
+    S.runner=/const\s+RAW_CFG\s*=/.test(text);
+    const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
     const url=URL.createObjectURL(new Blob([head?injectHead(text,head):text],{type:'text/html;charset=utf-8'}));
     if(S.url)URL.revokeObjectURL(S.url);S.url=url;
     const box=$('#rframe');box.innerHTML='';
-    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.src=url;box.appendChild(fr);applyFont()
+    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',applyFont);fr.src=url;box.appendChild(fr);applyFont()
   }catch(e){toast('This file could not be opened: '+e.message)}}
-/* Font size: scales the page like browser zoom (iframe is made larger and scaled down/up), so layouts still fit the screen */
+/* Font size: real zoom applied INSIDE the page (re-laid-out and re-rendered at full resolution), so text stays sharp */
 const FONTS=[60,70,80,90,100,110,125,150,175,200,250];
-function applyFont(){const fr=$('#rframe iframe');if(!fr)return;const p=+S.set.font||100,s=p/100;
-  fr.style.cssText=p===100?'':'inset:auto;left:0;top:0;width:'+(100/s)+'%;height:'+(100/s)+'%;transform:scale('+s+');transform-origin:0 0'}
+/* Test pages (the reference runner): enlarge ONLY the question, options and the buttons below them.
+   Title bar, timer, progress bar and header stay at normal size. Any other page gets whole-page zoom. */
+function zoomCss(){const p=+S.set.font||100;if(p===100)return '';const z=p/100;
+  if(!S.runner)return 'html{zoom:'+z+' !important}';
+  return '#root main>.q,#root .opts,#root .nav,#root .rv{zoom:'+z+' !important}'+
+    (z>1?'#root{overflow-y:auto;-webkit-overflow-scrolling:touch}#root>header{position:sticky;top:env(safe-area-inset-top,0px);z-index:6}#root>main{flex:none;overflow:visible}':'')}
+const RUNNER_FIX='<script>(function(){var last="";function chk(){var r=document.getElementById("root");if(!r)return;var q=r.querySelector(".qn"),t=q?q.textContent:"";if(t!==last){last=t;r.scrollTop=0}}function go(){var r=document.getElementById("root");if(!r)return;new MutationObserver(chk).observe(r,{childList:true});chk()}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go()})()'+SCRIPT_END;
+function zoomTag(){return '<style id="hr-zoom">'+zoomCss()+'</style>'+(S.runner?RUNNER_FIX:'')}
+function applyFont(){const fr=$('#rframe iframe');if(!fr)return;fr.style.cssText='';
+  try{const d=fr.contentDocument;if(!d||!d.documentElement)return;let st=d.getElementById('hr-zoom');
+    if(!st){st=d.createElement('style');st.id='hr-zoom';(d.head||d.documentElement).appendChild(st)}
+    st.textContent=zoomCss()}catch(e){}}
 function stepFont(d){let i=FONTS.indexOf(+S.set.font);if(i<0)i=FONTS.indexOf(100);
   i=d==='0'?FONTS.indexOf(100):Math.max(0,Math.min(FONTS.length-1,i+(d==='+'?1:-1)));
   S.set.font=FONTS[i];saveSet();applyFont();const p=$('#fPct');if(p)p.textContent=S.set.font+'%';const slider=$('#fontSlider');if(slider)slider.value=S.set.font}
