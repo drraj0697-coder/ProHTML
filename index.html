@@ -688,10 +688,20 @@ async function loadFrame(){
 const FONTS=[60,70,80,90,100,110,125,150,175,200,250];
 /* Test pages (the reference runner): enlarge ONLY the question, options and the buttons below them.
    Title bar, timer, progress bar and header stay at normal size. Any other page gets whole-page zoom. */
-function zoomCss(){const p=+S.set.font||100;if(p===100)return '';const z=p/100;
-  if(!S.runner)return 'html{zoom:'+z+' !important}';
-  return '#root main>.q,#root .opts,#root .nav,#root .rv{zoom:'+z+' !important}'+
-    (z>1?'#root{overflow-y:auto;-webkit-overflow-scrolling:touch}#root>header{position:sticky;top:env(safe-area-inset-top,0px);z-index:6}#root>main{flex:none;overflow:visible}':'')}
+function zoomCss() {
+  const p = +S.set.font || 100;
+  if (p === 100) return '';
+  const z = p / 100;
+
+  if (!S.runner) return 'html{zoom:' + z + ' !important}';
+
+  return '#root main>.q,#root .opts,#root .nav,#root .rv,#root .ex{zoom:' + z + ' !important}' +
+    '#root .rv .ex,#root main>.q .ex,#root .opts .ex,#root .nav .ex{zoom:1 !important}' +
+    (z > 1
+      ? '#root{overflow-y:auto;-webkit-overflow-scrolling:touch}#root>header{position:sticky;top:env(safe-area-inset-top,0px);z-index:6}#root>main{flex:none;overflow:visible}'
+      : '');
+}
+
 const RUNNER_FIX='<script>(function(){var last="";function chk(){var r=document.getElementById("root");if(!r)return;var q=r.querySelector(".qn"),t=q?q.textContent:"";if(t!==last){last=t;r.scrollTop=0}}function go(){var r=document.getElementById("root");if(!r)return;new MutationObserver(chk).observe(r,{childList:true});chk()}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go()})()'+SCRIPT_END;
 function zoomTag(){return '<style id="hr-zoom">'+zoomCss()+'</style>'+(S.runner?RUNNER_FIX:'')}
 function applyFont(){const fr=$('#rframe iframe');if(!fr)return;fr.style.cssText='';
@@ -795,5 +805,5 @@ addEventListener('keydown',e=>{if(e.defaultPrevented)return;if(e.key==='Escape')
   if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 })();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4f920bbbedd24f5',t:'MTc5Mjg0NjQ0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
