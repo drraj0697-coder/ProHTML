@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>HTML Reader</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -225,6 +225,8 @@ body.dropping #dropov{display:grid}
 @media (prefers-reduced-transparency:reduce){#rbar,.menu,.tabs,.addpill,.search,.circ,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<!-- Browser adaptation of liquid_glass_widgets; all assets are local. -->
+<link rel="stylesheet" href="assets/liquid-glass.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -246,24 +248,32 @@ body.dropping #dropov{display:grid}
 <symbol id="i-fs" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
 <symbol id="i-focus" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/></symbol>
 <symbol id="i-open" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4M14 4h6v6M20 4l-9 9"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M9 4.7 9.7 3h4.6l.7 1.7 1.8 1 1.9-.2 2.2 3.8-1.2 1.5v2.3l1.2 1.5-2.2 3.8-1.9-.2-1.8 1-.7 1.8H9.7L9 19.2l-1.8-1-1.9.2-2.2-3.8 1.2-1.5v-2.3L3.1 9.3l2.2-3.8 1.9.2z"/><circle cx="12" cy="12" r="3.1"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 7 3v5c0 4.4-2.5 7.5-7 10-4.5-2.5-7-5.6-7-10V6zM8.5 11.5 11 14l4.5-4.5"/></symbol>
 </defs></svg>
 
 <main id="home">
   <div class="wrapin">
-    <nav class="nav">
-      <div class="tabs" role="tablist">
-        <button role="tab" data-tab="my" aria-selected="true">My HTML</button>
-        <button role="tab" data-tab="custom" aria-selected="false">Custom Module</button>
-        <button role="tab" data-tab="fav" aria-selected="false">Favorites</button>
-        <button role="tab" data-tab="set" aria-selected="false">Settings</button>
+    <header class="brandbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg class="i"><use href="#i-doc"/></svg></span><div><span class="brand-name">ProHTML</span><span class="brand-tag">YOUR PERSONAL READER</span></div></div>
+      <span class="privacy-note"><svg class="i" aria-hidden="true"><use href="#i-shield"/></svg><span>Stored on this device</span></span>
+    </header>
+    <nav class="nav" aria-label="Library navigation">
+      <div class="tabs" role="tablist" aria-label="Library sections">
+        <button role="tab" id="tab-my" aria-controls="view" data-tab="my" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-doc"/></svg><span>My HTML</span></button>
+        <button role="tab" id="tab-custom" aria-controls="view" data-tab="custom" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-layers"/></svg><span>Custom Module</span></button>
+        <button role="tab" id="tab-fav" aria-controls="view" data-tab="fav" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg><span>Favorites</span></button>
+        <button role="tab" id="tab-set" aria-controls="view" data-tab="set" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></button>
       </div>
       <div class="right">
-        <div class="addpill"><span class="n" id="cnt">0</span><button class="plus" id="bAdd" aria-label="Add HTML files"><svg class="i"><use href="#i-plus"/></svg></button></div>
+        <div class="addpill"><span class="n" id="cnt">0</span><button class="plus" id="bAdd" aria-label="Add HTML files or folder" aria-haspopup="menu" aria-expanded="false"><svg class="i"><use href="#i-plus"/></svg></button></div>
         <label class="search" id="srch"><svg class="i"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search files" aria-label="Search files" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
       </div>
     </nav>
-    <h1 id="ttl">HTML Reader</h1>
-    <div id="view"></div>
+    <header class="library-heading"><div><p class="eyebrow" id="sectionEyebrow">YOUR LIBRARY</p><h1 id="ttl">HTML Reader</h1><p class="page-note" id="pageNote">Your pages. Your space. Pick up where you left off.</p></div><span class="library-label">A little web of your own</span></header>
+    <div id="view" role="tabpanel" aria-labelledby="tab-my"></div>
+    <footer class="library-footer"><span>Local files. A little more lovely.</span><span>HTML · HTM · XHTML</span></footer>
   </div>
 </main>
 
@@ -271,20 +281,21 @@ body.dropping #dropov{display:grid}
   <div id="rbar">
     <button class="circ" id="rClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
     <div class="t" id="rTitle"></div>
-    <button class="circ" id="rMenu" aria-label="More options" aria-haspopup="true"><svg class="i"><use href="#i-dots"/></svg></button>
+    <button class="circ" id="rMenu" aria-label="More options" aria-haspopup="menu" aria-expanded="false"><svg class="i"><use href="#i-dots"/></svg></button>
   </div>
   <div id="rframe"></div>
   <div class="fl" id="flL"><button class="circ" id="flClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
-  <div class="fl" id="flR"><button class="circ" id="flMenu" aria-label="More options"><svg class="i"><use href="#i-dots"/></svg></button></div>
+  <div class="fl" id="flR"><button class="circ" id="flMenu" aria-label="More options" aria-haspopup="menu" aria-expanded="false"><svg class="i"><use href="#i-dots"/></svg></button></div>
   <button id="grab" aria-label="Show toolbar"></button>
 </section>
 
-<div id="layer" hidden><div class="scrim" id="scrim"></div><div class="menus"><div class="menu" id="m1"></div><div class="menu" id="m2" hidden></div></div></div>
+<div id="layer" hidden><div class="scrim" id="scrim" aria-hidden="true"></div><div class="menus"><div class="menu" id="m1" role="menu" tabindex="-1" aria-label="Options"></div><div class="menu" id="m2" role="menu" tabindex="-1" aria-label="More options" hidden></div></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="dropov">Drop HTML files to add</div>
 <input type="file" id="inDir" webkitdirectory multiple hidden>
 <input type="file" id="inFiles" multiple accept=".html,.htm,.xhtml,text/html,application/xhtml+xml" hidden>
 
+<script src="assets/liquid-glass.js"></script>
 <script>
 'use strict';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -306,7 +317,7 @@ const DB={p:null,open(){if(!this.p)this.p=new Promise((res,rej)=>{try{const r=in
 
 /* ---------- theme ---------- */
 function applyTheme(){const r=document.documentElement;if(S.set.theme==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',S.set.theme);
-  const dark=S.set.theme==='dark'||(S.set.theme==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);$('#themeColor').setAttribute('content',dark?'#000000':'#f2f2f7')}
+  const dark=S.set.theme==='dark'||(S.set.theme==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);$('#themeColor').setAttribute('content',dark?'#11131c':'#f0f2f8')}
 matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
 const saveSet=()=>LS.set('set',S.set);
 
@@ -361,7 +372,8 @@ function browse(){const p=S.path,d=new Map(),files=[];
   for(const f of S.files){if(!inPath(f,p))continue;const r=relOf(f);if(r.length===p.length)files.push(f);else{const n=r[p.length];d.set(n,(d.get(n)||0)+1)}}
   files.sort((a,b)=>nat(clean(a.name),clean(b.name)));
   return{dirs:[...d].map(([name,count])=>({name,count,path:p.concat(name)})).sort((a,b)=>nat(clean(a.name),clean(b.name))),files}}
-const fileRow=(f,sub)=>{const g=prog(f),ok=g.k==='done';return '<button class="row'+(ok?' rdone':'')+'" data-id="'+f.id+'"><span class="fi'+(ok?' ok':'')+'">'+ico(ok?'check':'doc')+'</span><span class="tx"><span class="nm">'+esc(clean(f.name))+'</span><span class="sz p">'+esc(sub)+'</span></span>'+badge(g)+(f.fav?ico('star','star'):'')+ico('chev','chev')+'</button>'};
+const rowOptions=label=>'<button class="row-more" data-row-menu aria-label="Options for '+esc(label)+'" aria-haspopup="menu" aria-expanded="false">'+ico('dots')+'</button>';
+const fileRow=(f,sub)=>{const g=prog(f),ok=g.k==='done',label=clean(f.name);return '<div class="row'+(ok?' rdone':'')+'" data-id="'+esc(f.id)+'"><button class="row-open" aria-label="Open '+esc(label)+'"><span class="fi'+(ok?' ok':'')+'">'+ico(ok?'check':'doc')+'</span><span class="tx"><span class="nm">'+esc(label)+'</span><span class="sz p">'+esc(sub)+'</span></span>'+badge(g)+(f.fav?ico('star','star'):'')+ico('chev','chev')+'</button>'+rowOptions(label)+'</div>'};
 function render(){
   const flat=S.tab==='fav'||!!S.q.trim()||S.filt!=='all';
   if(S.tab==='my')while(S.path.length&&!S.files.some(f=>inPath(f,S.path)))S.path.pop();
@@ -369,7 +381,10 @@ function render(){
   $('#cnt').textContent=S.files.length;
   const ttl={my:S.path.length?clean(S.path[S.path.length-1]):'HTML Reader',custom:'Marrow Custom Module',fav:'Favorites',set:'Settings'}[S.tab];$('#ttl').textContent=ttl;
   $('#srch').style.display=(S.tab==='set'||S.tab==='custom')?'none':'';
-  const v=$('#view');
+  const notes={my:'Your pages. Your space. Pick up where you left off.',custom:'A focused test, built around what you want to learn.',fav:'The pages you love, always within reach.',set:'Make this little space feel like yours.'};
+  $('#pageNote').textContent=notes[S.tab];
+  $('#sectionEyebrow').textContent={my:'YOUR LIBRARY',custom:'LEARN YOUR WAY',fav:'SAVED FOR YOU',set:'YOUR PREFERENCES'}[S.tab];
+  const v=$('#view');v.setAttribute('aria-labelledby','tab-'+S.tab);
   if(S.tab==='set'){renderSettings(v);return}
   if(S.tab==='custom'){renderCustomModule(v);return}
   let h='',n=0;S.dirList=[];
@@ -380,9 +395,9 @@ function render(){
     h+=n?'<div class="card">'+items.map(f=>fileRow(f,(relOf(f).length?relOf(f).map(clean).join(' › ')+' · ':'')+fmtSize(f.size))).join('')+'</div>':''}
   else{const {dirs,files}=browse();n=dirs.length+files.length;S.dirList=dirs;
     if(S.path.length)h+='<button class="crumb" id="back">'+ico('chev')+esc(S.path.length>1?clean(S.path[S.path.length-2]):'All files')+'</button>';
-    h+=n?'<div class="card">'+dirs.map((d,i)=>'<button class="row" data-dir="'+i+'"><span class="fi dir">'+ico('folder')+'</span><span class="tx"><span class="nm">'+esc(clean(d.name))+'</span><span class="sz">'+d.count+' file'+(d.count===1?'':'s')+dirDone(d.path)+'</span></span>'+ico('chev','chev')+'</button>').join('')+files.map(f=>fileRow(f,fmtSize(f.size))).join('')+'</div>':''}
+    h+=n?'<div class="card">'+dirs.map((d,i)=>'<div class="row" data-dir="'+i+'"><button class="row-open" aria-label="Open folder '+esc(clean(d.name))+'"><span class="fi dir">'+ico('folder')+'</span><span class="tx"><span class="nm">'+esc(clean(d.name))+'</span><span class="sz">'+d.count+' file'+(d.count===1?'':'s')+dirDone(d.path)+'</span></span>'+ico('chev','chev')+'</button>'+rowOptions(clean(d.name))+'</div>').join('')+files.map(f=>fileRow(f,fmtSize(f.size))).join('')+'</div>':''}
   if(!n){
-    h+='<div class="card"><div class="empty">'+(S.files.length&&(S.q||S.filt!=='all')?'<b>No matches</b>Try a different name or filter.':S.tab==='fav'?'<b>No favorites yet</b>Open a file, tap the ••• button, then choose Add to Favorites.':'<b>No files yet</b>Add HTML files, or a whole folder, from the Files app, iCloud Drive or your computer.<br><button class="big" id="bigAdd">'+ico('plus')+'Add HTML files or folder</button>')+'</div></div>'}
+    h+='<div class="card"><div class="empty"><span class="empty-orbit" aria-hidden="true">'+ico(S.tab==='fav'?'star':(S.q||S.filt!=='all')?'search':'doc')+'</span>'+(S.files.length&&(S.q||S.filt!=='all')?'<b>No matches</b>Try a different name or filter.':S.tab==='fav'?'<b>No favorites yet</b>Open a file, tap the ••• button, then choose Add to Favorites.':'<b>No files yet</b>Add HTML files, or a whole folder, from the Files app, iCloud Drive or your computer.<br><button class="big" id="bigAdd">'+ico('plus')+'Add HTML files or folder</button>')+'</div></div>'}
   if(S.tab==='my'&&!standalone()&&isiOS()&&!S.tip&&S.files.length)h+='<div class="tip"><span>Tip: tap Share, then Add to Home Screen, to use this like an app.</span><button id="tipX">Hide</button></div>';
   v.innerHTML=h;
   const b=$('#bigAdd');if(b)b.onclick=addMenu;
@@ -488,15 +503,32 @@ addEventListener('dragleave',()=>{dn=Math.max(0,dn-1);if(!dn)document.body.class
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();dn=0;document.body.classList.remove('dropping');if(e.dataTransfer&&e.dataTransfer.files.length)addFiles([...e.dataTransfer.files])});
 
-/* tap opens, long press or right-click opens file actions */
+/* Tap the row to read; its own •••, a long press, or right-click opens options. */
 (()=>{const v=$('#view');let timer=0,fired=false,sx=0,sy=0;
-  v.addEventListener('pointerdown',e=>{const r=e.target.closest('.row');if(!r)return;fired=false;sx=e.clientX;sy=e.clientY;timer=setTimeout(()=>{fired=true;rowSheet(r)},550)});
-  const cancel=()=>clearTimeout(timer);
+  const cancel=()=>{clearTimeout(timer);timer=0};
+  v.addEventListener('pointerdown',e=>{
+    cancel();fired=false;const r=e.target.closest('.row');
+    if(!r||e.button!==0||e.target.closest('[data-row-menu]'))return;
+    sx=e.clientX;sy=e.clientY;
+    timer=setTimeout(()=>{if(!r.isConnected)return;fired=true;rowSheet(r,{element:r,point:true,x:sx,y:sy})},550)
+  });
   v.addEventListener('pointermove',e=>{if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>10)cancel()});
   v.addEventListener('pointerup',cancel);v.addEventListener('pointercancel',cancel);v.addEventListener('pointerleave',cancel);
-  v.addEventListener('contextmenu',e=>{const r=e.target.closest('.row');if(r){e.preventDefault();cancel();fired=true;rowSheet(r)}});
-  v.addEventListener('click',e=>{const r=e.target.closest('.row');if(!r)return;if(fired){fired=false;return}if(r.dataset.dir!==undefined){S.path=S.dirList[+r.dataset.dir].path;render();$('#home').scrollTop=0}else openFile(r.dataset.id)})})();
-function rowSheet(r){if(r.dataset.dir!==undefined)dirSheet(+r.dataset.dir);else fileSheet(r.dataset.id)}
+  document.addEventListener('scroll',cancel,{capture:true,passive:true});
+  v.addEventListener('contextmenu',e=>{const r=e.target.closest('.row');if(!r)return;
+    e.preventDefault();cancel();fired=true;
+    rowSheet(r,(e.clientX||e.clientY)?{element:r,point:true,x:e.clientX,y:e.clientY}:r.querySelector('.row-more'))
+  });
+  v.addEventListener('keydown',e=>{const r=e.target.closest('.row');if(!r)return;
+    if(e.key==='ContextMenu'||(e.shiftKey&&e.key==='F10')){e.preventDefault();cancel();rowSheet(r,r.querySelector('.row-more'))}
+  });
+  v.addEventListener('click',e=>{const r=e.target.closest('.row');if(!r)return;
+    const more=e.target.closest('[data-row-menu]');if(more){e.stopPropagation();fired=false;rowSheet(r,more);return}
+    if(fired){fired=false;return}
+    if(r.dataset.dir!==undefined){S.path=S.dirList[+r.dataset.dir].path;render();$('#home').scrollTop=0}else openFile(r.dataset.id)
+  })
+})();
+function rowSheet(r,anchor){if(r.dataset.dir!==undefined)dirSheet(+r.dataset.dir,anchor||r);else fileSheet(r.dataset.id,anchor||r)}
 
 /* ---------- reading ---------- */
 function decodeBytes(buf){
@@ -682,67 +714,77 @@ function exitBrowserFull(){try{if(document.fullscreenElement||document.webkitFul
 let peekT=0;$('#grab').onclick=()=>{const r=$('#reader');r.classList.add('peek');clearTimeout(peekT);peekT=setTimeout(()=>r.classList.remove('peek'),4500)};
 $('#rbar').addEventListener('pointerdown',()=>{if($('#reader').classList.contains('peek')){clearTimeout(peekT);peekT=setTimeout(()=>$('#reader').classList.remove('peek'),4500)}});
 
-/* ---------- menus ---------- */
-let outDown=false;
-let hideT=0;
-function showLayer(center){outDown=false;clearTimeout(hideT);const l=$('#layer');l.classList.remove('closing');l.hidden=false;l.classList.toggle('center',!!center)}
-function hideMenus(){const l=$('#layer');S.sheet=null;if(l.hidden||l.classList.contains('closing'))return;
-  if(matchMedia('(prefers-reduced-motion:reduce)').matches){l.hidden=true;$('#m2').hidden=true;return}
-  l.classList.add('closing');clearTimeout(hideT);hideT=setTimeout(()=>{l.hidden=true;l.classList.remove('closing');$('#m2').hidden=true},180)}
-$('#scrim').onclick=hideMenus;
-/* tap anywhere outside the menu = go back (close) */
-$('#layer').addEventListener('pointerdown',e=>{outDown=!e.target.closest('.menu')});
-$('#layer').addEventListener('click',e=>{if(outDown&&!e.target.closest('.menu')){outDown=false;hideMenus()}});
+/* ---------- trigger-anchored liquid-glass menus ---------- */
+const glassMenus=ProGlass.createMenus({layer:$('#layer'),primary:$('#m1'),secondary:$('#m2'),onClose:()=>{S.sheet=null;S.dsel=null}});
+function showLayer(anchor,label){glassMenus.open(anchor,{label:label||'Options'})}
+function hideMenus(restoreFocus=true){glassMenus.close({restoreFocus})}
 const mi=(act,icon,label,extra)=>'<button data-a="'+act+'">'+(icon?ico(icon):'<span class="tick"></span>')+'<span>'+label+'</span>'+(extra||'')+'</button>';
-function readerMenu(){
-  const f=S.cur;if(!f)return;S.sheet=null;
+const menuHeading=(kind,title)=>'<div class="menu-heading"><p class="eyebrow">'+esc(kind)+'</p><b>'+esc(title)+'</b></div><hr>';
+function readerMenu(event){
+  const f=S.cur;if(!f)return;S.sheet=null;S.dsel=null;
   const m1=$('#m1');
-  m1.innerHTML=mi('fav','star',f.fav?'Remove from Favorites':'Add to Favorites')+mi('reload','reload','Reload')+'<hr>'+mi('disp','disp','Display',ico('chev','go'))+mi('net',S.net?'net':'net','Network Access',ico('chev','go'))+mi('font','font','Font Size',ico('chev','go'))+'<hr>'+mi('share','share','Share');
-  $('#m2').hidden=true;showLayer(false)}
+  m1.innerHTML=menuHeading('PAGE OPTIONS',clean(f.name))+mi('fav','star',f.fav?'Remove from Favorites':'Add to Favorites')+mi('reload','reload','Reload')+'<hr>'+mi('disp','disp','Display',ico('chev','go'))+mi('net','net','Network Access',ico('chev','go'))+mi('font','font','Font Size',ico('chev','go'))+'<hr>'+mi('share','share','Share');
+  showLayer(event||($('#reader').dataset.mode==='focus'?$('#flMenu'):$('#rMenu')),'Reader options')
+}
 $('#rMenu').onclick=$('#flMenu').onclick=readerMenu;
-function sub(kind){
-  const m2=$('#m2');
-  if(kind==='font'){const value=Math.max(60,Math.min(250,+S.set.font||100));m2.innerHTML='<div class="font-slider"><div class="font-label"><span>Reader text size</span><output id="fPct">'+value+'%</output></div><input id="fontSlider" type="range" min="60" max="250" step="5" value="'+value+'" aria-label="Font size"></div><hr><button data-a="font:0"><span class="tick"></span><span>Reset to 100%</span></button>';const slider=$('#fontSlider');slider.oninput=()=>{S.set.font=+slider.value;saveSet();applyFont();$('#fPct').textContent=S.set.font+'%'};m2.hidden=false;return}
-  if(kind==='disp')m2.innerHTML=[['adjacent','Adjacent','disp'],['full','Full Screen','fs'],['focus','Focus','focus']].map(([k,l,i])=>'<button data-a="mode:'+k+'" class="'+(S.mode===k?'on':'')+'"><span class="tick">'+(S.mode===k?ico('check'):'')+'</span>'+ico(i)+'<span>'+l+'</span></button>').join('');
-  else m2.innerHTML=[[true,'Allowed'],[false,'Blocked (offline)']].map(([k,l])=>'<button data-a="net:'+k+'" class="'+(S.net===k?'on':'')+'"><span class="tick">'+(S.net===k?ico('check'):'')+'</span>'+ico('net')+'<span>'+l+'</span></button>').join('');
-  m2.hidden=false}
+function sub(kind,trigger){
+  const m2=$('#m2'),title={font:'Font Size',disp:'Display',net:'Network Access'}[kind];
+  const back='<button class="menu-back" data-a="back" aria-label="Back to reader options">'+ico('chev')+'<span>'+title+'</span></button><hr>';
+  if(kind==='font'){
+    const value=Math.max(60,Math.min(250,+S.set.font||100));
+    m2.innerHTML=back+'<div class="font-slider"><div class="font-label"><label for="fontSlider">Reader text size</label><output id="fPct" for="fontSlider">'+value+'%</output></div><input id="fontSlider" type="range" min="60" max="250" step="5" value="'+value+'" aria-label="Font size"></div><hr><button data-a="font:0">'+ico('reload')+'<span>Reset to 100%</span></button>';
+    const slider=$('#fontSlider');slider.oninput=()=>{S.set.font=+slider.value;saveSet();applyFont();$('#fPct').textContent=S.set.font+'%'}
+  }else if(kind==='disp'){
+    m2.innerHTML=back+[['adjacent','Adjacent','disp'],['full','Full Screen','fs'],['focus','Focus','focus']].map(([k,l,i])=>'<button data-a="mode:'+k+'" class="'+(S.mode===k?'on':'')+'"><span class="tick">'+(S.mode===k?ico('check'):'')+'</span>'+ico(i)+'<span>'+l+'</span></button>').join('')
+  }else{
+    m2.innerHTML=back+[[true,'Allowed'],[false,'Blocked (offline)']].map(([k,l])=>'<button data-a="net:'+k+'" class="'+(S.net===k?'on':'')+'"><span class="tick">'+(S.net===k?ico('check'):'')+'</span>'+ico('net')+'<span>'+l+'</span></button>').join('')
+  }
+  glassMenus.showSubmenu(trigger||$('#m1 [data-a="'+kind+'"]'),title)
+}
 $('#layer').addEventListener('click',async e=>{
-  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,f=S.sheet||S.cur;
-  if(a==='disp'||a==='net'||a==='font'){sub(a);return}
+  const b=e.target.closest('[data-a]');if(!b||glassMenus.closing)return;
+  const a=b.dataset.a,f=S.sheet||S.cur,d=S.dsel;
+  if(a==='back'){glassMenus.back();return}
+  if(a==='disp'||a==='net'||a==='font'){sub(a,b);return}
   if(a.startsWith('font:')){stepFont(a.slice(5));return}
-  if(a.startsWith('mode:')){hideMenus();setMode(a.slice(5));return}
-  if(a.startsWith('net:')){const v=a.slice(4)==='true';hideMenus();if(v!==S.net){S.net=v;toast(v?'Network access allowed':'Network access blocked');loadFrame()}return}
-  if(a==='addf'){hideMenus();$('#inFiles').click();return}
-  if(a==='addd'){hideMenus();$('#inDir').click();return}
-  if(a==='opendir'){hideMenus();if(S.dsel){S.path=S.dsel.path;render();$('#home').scrollTop=0}return}
-  if(a==='deldir'){hideMenus();if(S.dsel)removeDir(S.dsel);return}
-  if(a==='reload'){hideMenus();loadFrame();return}
-  if(a==='fav'){hideMenus();toggleFav(f);return}
-  if(a==='share'){hideMenus();shareFile(f);return}
-  if(a==='del'){hideMenus();removeFile(f.id);return}
-  if(a==='open'){hideMenus();openFile(f.id)}});
+  if(a.startsWith('mode:')){hideMenus(false);setMode(a.slice(5));return}
+  if(a.startsWith('net:')){const v=a.slice(4)==='true';hideMenus(false);if(v!==S.net){S.net=v;toast(v?'Network access allowed':'Network access blocked');loadFrame()}return}
+  if(a==='addf'){hideMenus(false);$('#inFiles').click();return}
+  if(a==='addd'){hideMenus(false);$('#inDir').click();return}
+  if(a==='opendir'){hideMenus(false);if(d){S.path=d.path;render();$('#home').scrollTop=0}return}
+  if(a==='deldir'){hideMenus(false);if(d)removeDir(d);return}
+  if(a==='reload'){hideMenus(false);loadFrame();return}
+  if(a==='fav'){hideMenus(false);if(f)toggleFav(f);return}
+  if(a==='share'){hideMenus(false);if(f)shareFile(f);return}
+  if(a==='del'){hideMenus(false);if(f)removeFile(f.id);return}
+  if(a==='open'){hideMenus(false);if(f)openFile(f.id)}
+});
 async function toggleFav(f){f.fav=!f.fav;await DB.put(f);toast(f.fav?'Added to Favorites':'Removed from Favorites');if($('#reader').hidden)render()}
 async function shareFile(f){
   try{const file=new File([f.blob],f.name,{type:'text/html'});
     if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:f.name});return}
     const a=document.createElement('a');a.href=URL.createObjectURL(f.blob);a.download=f.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Saved '+f.name)
-  }catch(e){if(e&&e.name!=='AbortError')toast('Sharing is not available here.')}}
+  }catch(e){if(e&&e.name!=='AbortError')toast('Sharing is not available here.')}
+}
 function removeFile(id){S.files=S.files.filter(x=>x.id!==id);DB.del(id);dropMeta(id);if(S.cur&&S.cur.id===id)closeReader();else render();toast('Removed')}
-function addMenu(){S.sheet=null;
-  $('#m1').innerHTML=mi('addf','doc','Add HTML Files')+mi('addd','folder','Add Folder');
-  $('#m2').hidden=true;showLayer(true)}
-function dirSheet(i){const d=S.dirList[i];if(!d)return;S.sheet=null;S.dsel=d;
-  $('#m1').innerHTML=mi('opendir','folder','Open')+'<hr><button data-a="deldir" class="del">'+ico('trash')+'<span>Delete folder</span></button>';
-  $('#m2').hidden=true;showLayer(true)}
+function addMenu(event){S.sheet=null;S.dsel=null;
+  $('#m1').innerHTML=menuHeading('ADD TO YOUR LIBRARY','Bring a page along.')+mi('addf','doc','Add HTML Files')+mi('addd','folder','Add Folder');
+  showLayer(event||$('#bAdd'),'Add files or folder')
+}
+function dirSheet(i,anchor){const d=S.dirList[i];if(!d)return;S.sheet=null;S.dsel=d;
+  $('#m1').innerHTML=menuHeading('FOLDER OPTIONS',clean(d.name))+mi('opendir','folder','Open')+'<hr><button data-a="deldir" class="del">'+ico('trash')+'<span>Delete folder</span></button>';
+  showLayer(anchor||$('[data-dir="'+i+'"] .row-more'),'Folder options')
+}
 function removeDir(d){const gone=S.files.filter(f=>inPath(f,d.path));gone.forEach(f=>{DB.del(f.id);dropMeta(f.id)});S.files=S.files.filter(f=>!inPath(f,d.path));render();toast('Removed '+clean(d.name))}
-function fileSheet(id){
-  const f=S.files.find(x=>x.id===id);if(!f)return;S.sheet=f;
-  $('#m1').innerHTML=mi('open','open','Open')+mi('fav','star',f.fav?'Remove from Favorites':'Add to Favorites')+mi('share','share','Share')+'<hr><button data-a="del" class="del">'+ico('trash')+'<span>Delete</span></button>';
-  $('#m2').hidden=true;showLayer(true)}
+function fileSheet(id,anchor){
+  const f=S.files.find(x=>x.id===id);if(!f)return;S.sheet=f;S.dsel=null;
+  $('#m1').innerHTML=menuHeading('FILE OPTIONS',clean(f.name))+mi('open','open','Open')+mi('fav','star',f.fav?'Remove from Favorites':'Add to Favorites')+mi('share','share','Share')+'<hr><button data-a="del" class="del">'+ico('trash')+'<span>Delete</span></button>';
+  showLayer(anchor||$('[data-id="'+CSS.escape(id)+'"] .row-more'),'File options')
+}
 
 /* ---------- toast ---------- */
 let tt=0;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600)}
-addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#layer').hidden)hideMenus();else if($('#reader').hidden&&S.filt!=='all'){S.filt='all';render()}else if(!$('#reader').hidden)closeReader()}});
+addEventListener('keydown',e=>{if(e.defaultPrevented)return;if(e.key==='Escape'){if(!$('#layer').hidden)hideMenus();else if($('#reader').hidden&&S.filt!=='all'){S.filt='all';render()}else if(!$('#reader').hidden)closeReader()}});
 
 /* ---------- start ---------- */
 (async function(){
