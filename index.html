@@ -224,41 +224,12 @@ body.dropping #dropov{display:grid}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#rbar,.menu,.tabs,.addpill,.search,.circ{background:var(--card)}#toast{background:rgba(30,30,34,.94)}}
 @media (prefers-reduced-transparency:reduce){#rbar,.menu,.tabs,.addpill,.search,.circ,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-
-/* ---------- Grand Test: exam-pattern chooser ---------- */
-#patLayer{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:20px;background:rgba(10,12,22,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-#patLayer[hidden]{display:none}
-.pat-box{width:min(420px,100%);max-height:100%;overflow:auto;box-sizing:border-box;padding:22px;border-radius:26px;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
-.pat-box .eyebrow{margin:0 0 6px;color:var(--mut);font-size:10px;font-weight:700;letter-spacing:.14em}
-.pat-box h2{margin:0 0 6px;font-size:20px;line-height:1.25;letter-spacing:-.02em}
-.pat-box p.sub{margin:0 0 16px;color:var(--mut);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
-.pat-opt{display:flex;gap:12px;align-items:flex-start;width:100%;box-sizing:border-box;margin:0 0 10px;padding:14px;border:2px solid var(--line);border-radius:18px;background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer}
-.pat-opt:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.pat-opt .dot{flex:none;width:20px;height:20px;margin-top:2px;border-radius:50%;border:2px solid var(--mut);box-sizing:border-box}
-.pat-opt b{display:block;font-size:16px}
-.pat-opt small{display:block;margin-top:3px;color:var(--mut);font-size:13px;line-height:1.4}
-.pat-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft)}
-.pat-opt[aria-checked="true"] .dot{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 45%,transparent 50%)}
-.pat-note{margin:4px 0 16px;color:var(--mut);font-size:12px;line-height:1.5}
-.pat-act{display:flex;gap:10px}
-.pat-act button{flex:1;min-height:48px;border-radius:14px;font:600 15px var(--ui,inherit);cursor:pointer}
-#patGo{background:var(--dark-btn);color:var(--dark-btn-ink)}
-#patGo:disabled{opacity:.35;cursor:not-allowed}
-#patNo{background:var(--pill-on);color:var(--ink)}
-
-/* ---------- iPadOS/iOS 27: stop the system blur band over the top of installed web apps ---------- */
-/* The system blurs the top edge unless a fixed, opaque strip (>=6px high, >=80% wide, within 4px of the top) sits there. */
-#topEdge{position:fixed;top:0;left:0;right:0;height:8px;z-index:55;pointer-events:none;background:var(--bg)}
-/* reader toolbar: readable title instead of a pale, blurred glass bar */
-#reader #rbar{background:var(--lg-menu,var(--card));color:var(--ink);-webkit-backdrop-filter:blur(14px) saturate(140%);backdrop-filter:blur(14px) saturate(140%)}
-#reader #rbar .t{color:var(--ink);text-shadow:none}
 </style>
 <!-- Browser adaptation of liquid_glass_widgets; all assets are local. -->
 <link rel="stylesheet" href="assets/liquid-glass.css">
 <link rel="stylesheet" href="assets/mcq-search.css">
 </head>
 <body>
-<div id="topEdge" aria-hidden="true"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
@@ -369,14 +340,11 @@ function extractCfg(t){const m=/\bRAW_CFG\s*=\s*/.exec(t);if(!m)return null;cons
   try{return JSON.parse(t.slice(i,j))}catch(e){return null}}
 function buildMeta(cfg){const tests=Array.isArray(cfg.tests)?cfg.tests:[cfg];
   return tests.filter(c=>c&&Array.isArray(c.questions)).map(c=>({key:hashKey(c.title,c.questions),n:c.questions.length,a:c.questions.map(q=>q.a),mc:c.mc==null?4:+c.mc,mw:c.mw==null?1:+c.mw}))}
-const PAT={NEET_PG:{label:'NEET PG',mc:4,mw:1},INICET:{label:'INICET',mc:1,mw:0.33}};
-const patOf=key=>{const p=LS.get('pat.'+key,null);return p&&PAT[p]?PAT[p]:null};
-const r2=x=>Math.round(x*100)/100;
 function one(t){let st=null;try{st=JSON.parse(localStorage.getItem(t.key))}catch(e){}
   if(!st||!st.phase||st.phase==='intro')return{k:'new'};
   const ans=st.ans||{};let c=0,w=0,at=0;
   for(const q in ans){at++;const A=t.a[q];if(A==null||A<0)continue;if(ans[q]===A)c++;else w++}
-  const P=patOf(t.key),mc=P?P.mc:t.mc,mw=P?P.mw:t.mw;const max=t.a.filter(x=>x!=null&&x>=0).length*mc,score=r2(c*mc-w*mw);
+  const max=t.a.filter(x=>x!=null&&x>=0).length*t.mc,score=c*t.mc-w*t.mw;
   return{k:(st.phase==='done'||st.phase==='review')?'done':'prog',score,max,at,n:t.n,pct:max?Math.round(score/max*100):0}}
 function prog(f){const m=f.meta;if(!m||!m.length)return{k:'new'};
   const r=m.map(one);
@@ -707,78 +675,8 @@ function injectHead(t,s){
   return '<!doctype html><meta charset="utf-8">'+s+t}
 const SANDBOX='allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-pointer-lock allow-presentation allow-orientation-lock';
 
-
-/* ---------- Grand Test: mandatory NEET PG / INICET pattern ----------
-   NEET PG: +4 / -1 / 0     INICET: +1 / -0.33 / 0
-   Asked only for Grand Tests, once per fresh attempt. After the test is started the choice is locked. */
-function cfgSpan(t){const m=/\bRAW_CFG\s*=\s*/.exec(t);if(!m)return null;const i=m.index+m[0].length;if(t[i]!=='{')return null;
-  let d=0,str=false,esc=false,j=i;
-  for(;j<t.length;j++){const c=t[j];
-    if(str){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')str=false}
-    else if(c==='"')str=true;else if(c==='{')d++;else if(c==='}'){d--;if(!d){j++;break}}}
-  return d?null:[i,j]}
-function isGrand(name,cfg,metas){
-  const titles=(Array.isArray(cfg.tests)?cfg.tests:[cfg]).map(c=>c&&c.title||'').join(' ');
-  return /grand/i.test(name)||/grand/i.test(titles)||metas.some(m=>m.n>=150)}
-function isFresh(metas){return metas.every(m=>{let st=null;try{st=JSON.parse(localStorage.getItem(m.key))}catch(e){}return !st||!st.phase||st.phase==='intro'})}
-function askPattern(name){return new Promise(resolve=>{
-  let layer=$('#patLayer');if(layer)layer.remove();
-  const prev=document.activeElement;
-  layer=document.createElement('div');layer.id='patLayer';
-  layer.innerHTML='<div class="pat-box" role="dialog" aria-modal="true" aria-labelledby="patT"><p class="eyebrow">GRAND TEST</p><h2 id="patT">Select exam pattern</h2>'+
-  '<p class="sub"></p><div role="radiogroup" aria-label="Exam pattern">'+
-  '<button type="button" class="pat-opt" role="radio" aria-checked="false" data-p="NEET_PG"><span class="dot"></span><span><b>NEET PG</b><small>+4 correct · −1 wrong · 0 skipped</small></span></button>'+
-  '<button type="button" class="pat-opt" role="radio" aria-checked="false" data-p="INICET"><span class="dot"></span><span><b>INICET</b><small>+1 correct · −0.33 wrong · 0 skipped</small></span></button></div>'+
-  '<p class="pat-note">You must choose one to begin. Once you start, the pattern is locked for this attempt.</p>'+
-  '<div class="pat-act"><button type="button" id="patNo">Cancel</button><button type="button" id="patGo" disabled>Start test</button></div></div>';
-  layer.querySelector('.sub').textContent=name;
-  document.body.appendChild(layer);
-  let pick=null;const go=layer.querySelector('#patGo'),opts=[...layer.querySelectorAll('.pat-opt')];
-  const done=v=>{document.removeEventListener('keydown',key,true);layer.remove();try{prev&&prev.focus&&prev.focus()}catch(e){}resolve(v)};
-  const choose=b=>{pick=b.dataset.p;opts.forEach(o=>o.setAttribute('aria-checked',o===b?'true':'false'));go.disabled=false};
-  const key=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();done(null)}
-    else if(e.key==='Tab'){const f=[...layer.querySelectorAll('button:not(:disabled)')];if(!f.length)return;const a=document.activeElement,i=f.indexOf(a);
-      if(e.shiftKey&&(i<=0)){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i===f.length-1||i<0)){e.preventDefault();f[0].focus()}}};
-  opts.forEach(o=>o.onclick=()=>choose(o));
-  go.onclick=()=>{if(pick)done(pick)};
-  layer.querySelector('#patNo').onclick=()=>done(null);
-  document.addEventListener('keydown',key,true);
-  opts[0].focus()})}
-/* Returns false when the person cancels (the test is not opened). */
-async function ensurePattern(f){
-  if(!f||f.mcqLookup||!f.blob)return true;
-  let text;try{text=decodeBytes(await f.blob.arrayBuffer())}catch(e){return true}
-  const cfg=extractCfg(text);if(!cfg)return true;
-  const metas=buildMeta(cfg);if(!metas.length)return true;
-  if(!isGrand(f.name,cfg,metas))return true;
-  if(!isFresh(metas))return true;           /* already started or completed: pattern stays locked */
-  const choice=await askPattern(clean(f.name));
-  if(!choice)return false;
-  metas.forEach(m=>LS.set('pat.'+m.key,choice));
-  return true}
-/* Writes the chosen marks into the test's RAW_CFG before it loads. Tests without a stored choice are left untouched. */
-function applyPattern(text){
-  const sp=cfgSpan(text);if(!sp)return text;
-  let cfg;try{cfg=JSON.parse(text.slice(sp[0],sp[1]))}catch(e){return text}
-  const list=Array.isArray(cfg.tests)?cfg.tests:[cfg];let changed=false;
-  list.forEach(c=>{if(!c||!Array.isArray(c.questions))return;const P=patOf(hashKey(c.title,c.questions));if(P){c.mc=P.mc;c.mw=P.mw;changed=true}});
-  if(!changed)return text;
-  let out=text.slice(0,sp[0])+JSON.stringify(cfg).replace(/</g,'\\u003c')+text.slice(sp[1]);
-  /* fractional marks (-0.33): round displayed totals to 2 decimals, e.g. 97.67 not 97.67000000000001 */
-  const R=(a,b)=>{out=out.split(a).join(b)};
-  R('const ALL_TESTS = ','const R2=x=>Math.round(x*100)/100;const ALL_TESTS = ');
-  R('score:c*CFG.mc-w*CFG.mw}','score:R2(c*CFG.mc-w*CFG.mw)}');
-  R('sc+=s.score;','sc=R2(sc+s.score);');
-  R('+(m.c*CFG.mc-m.w*CFG.mw)+','+R2(m.c*CFG.mc-m.w*CFG.mw)+');
-  R('gNet=gok*CFG.mc-gno*CFG.mw;','gNet=R2(gok*CFG.mc-gno*CFG.mw);');
-  R('+(c*CFG.mc)+','+R2(c*CFG.mc)+');
-  R('+(w*CFG.mw)+','+R2(w*CFG.mw)+');
-  R('m.sc=m.c*CFG.mc-m.w*CFG.mw;','m.sc=R2(m.c*CFG.mc-m.w*CFG.mw);');
-  return out}
-
 async function openFile(id){
   const f=S.files.find(x=>x.id===id);if(!f)return;
-  if(!(await ensurePattern(f)))return;
   S.cur=f;S.mode=S.set.display;S.net=S.set.net;
   $('#rTitle').textContent=clean(f.name);$('#reader').hidden=false;document.body.style.overflow='hidden';
   setMode(S.mode,true);await loadFrame()}
@@ -786,15 +684,14 @@ async function loadFrame(){
   const f=S.cur;if(!f)return;
   try{
     if(f.mcqLookup)S.mcqNonce=uid();
-    let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
-    if(!f.mcqLookup)text=applyPattern(text);
+    const text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
     S.runner=!!f.mcqLookup||/const\s+RAW_CFG\s*=/.test(text);
     const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
     const markup=head?injectHead(text,head):text;
     const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
     if(S.url)URL.revokeObjectURL(S.url);S.url=url;
     const box=$('#rframe');box.innerHTML='';
-    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',()=>{applyFont();syncTopEdge()});if(f.mcqLookup)fr.srcdoc=markup;else fr.src=url;box.appendChild(fr);applyFont()
+    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',applyFont);if(f.mcqLookup)fr.srcdoc=markup;else fr.src=url;box.appendChild(fr);applyFont()
   }catch(e){toast('This file could not be opened: '+e.message)}}
 /* Font size: real zoom applied INSIDE the page (re-laid-out and re-rendered at full resolution), so text stays sharp */
 const FONTS=[60,70,80,90,100,110,125,150,175,200,250];
@@ -833,18 +730,6 @@ function setMode(m,silent){
 function enterBrowserFull(){try{const el=document.documentElement;const fn=el.requestFullscreen||el.webkitRequestFullscreen;if(fn&&!document.fullscreenElement&&!document.webkitFullscreenElement){const p=fn.call(el);if(p&&p.catch)p.catch(()=>{})}}catch(e){}}
 function exitBrowserFull(){try{if(document.fullscreenElement||document.webkitFullscreenElement){const fn=document.exitFullscreen||document.webkitExitFullscreen;const p=fn.call(document);if(p&&p.catch)p.catch(()=>{})}}catch(e){}}
 ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement&&S.mode==='full'&&!$('#reader').hidden)setMode('focus',true)}));
-/* ---------- top-edge strip colour (see #topEdge) ---------- */
-function frameBg(){
-  try{const fr=$('#rframe iframe'),d=fr&&fr.contentDocument;if(!d)return '#fff';
-    for(const el of [d.body,d.documentElement]){if(!el)continue;const c=fr.contentWindow.getComputedStyle(el).backgroundColor;
-      if(c&&c!=='transparent'&&!/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)/.test(c))return c}}catch(e){}
-  return '#fff'}
-function syncTopEdge(){
-  const te=$('#topEdge'),r=$('#reader');if(!te||!r)return;
-  /* iframe reaches the very top only when the toolbar is hidden (Focus / Full Screen, not peeking) */
-  const full=!r.hidden&&r.classList.contains('hide-bar')&&!r.classList.contains('peek');
-  te.style.background=full?frameBg():''}
-new MutationObserver(syncTopEdge).observe($('#reader'),{attributes:true,attributeFilter:['class','hidden','data-mode']});
 let peekT=0;$('#grab').onclick=()=>{const r=$('#reader');r.classList.add('peek');clearTimeout(peekT);peekT=setTimeout(()=>r.classList.remove('peek'),4500)};
 $('#rbar').addEventListener('pointerdown',()=>{if($('#reader').classList.contains('peek')){clearTimeout(peekT);peekT=setTimeout(()=>$('#reader').classList.remove('peek'),4500)}});
 
