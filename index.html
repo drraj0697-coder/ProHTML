@@ -788,7 +788,7 @@ async function loadFrame(){
     if(f.mcqLookup)S.mcqNonce=uid();
     let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
     if(!f.mcqLookup)text=applyPattern(text);
-    S.runner=!!f.mcqLookup||/const\s+RAW_CFG\s*=/.test(text);
+    S.runner=!!f.mcqLookup||/\bRAW_CFG\s*=/.test(text)||(/id=["']root["']/.test(text)&&/qn-row/.test(text));
     const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
     const markup=head?injectHead(text,head):text;
     const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
@@ -796,25 +796,47 @@ async function loadFrame(){
     const box=$('#rframe');box.innerHTML='';
     const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',()=>{applyFont();syncTopEdge()});if(f.mcqLookup)fr.srcdoc=markup;else fr.src=url;box.appendChild(fr);applyFont()
   }catch(e){toast('This file could not be opened: '+e.message)}}
-/* Font size: real zoom applied INSIDE the page (re-laid-out and re-rendered at full resolution), so text stays sharp */
+/* Font size: on test pages the slider raises the REAL font-size of the question, the options and
+   the buttons below them. The page is re-laid-out and re-rendered at the new size — never zoomed,
+   scaled or bitmap-stretched — so the font stays completely sharp at every step.
+   The test's top bar (title, timer, progress, All-questions and End-test controls) keeps its
+   normal size. Any page that is not a test gets whole-page zoom as before. */
 const FONTS=[60,70,80,90,100,110,125,150,175,200,250];
-/* Test pages (the reference runner): enlarge ONLY the question, options and the buttons below them.
-   Title bar, timer, progress bar and header stay at normal size. Any other page gets whole-page zoom. */
-function zoomCss() {
-  const p = +S.set.font || 100;
+/* The reference question layout, forced on every test page (library tests, custom modules and
+   searched MCQs): the question scrolls in its own area while the options and the button row
+   stay fixed at the bottom of the screen — at every font size. */
+const RUNNER_LAYOUT=
+  '#root{height:auto!important;min-height:100%!important;display:flex!important;flex-direction:column!important}'+
+  '#root>header{flex:none!important}'+
+  '#root>main{flex:1 1 0!important;min-height:25vh!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'+
+  '#root>.opts,#root>.nav{flex:none!important}';
+/* Real font-size scaling for test pages. .q = question text, .opt = options, .btn = the buttons
+   below the options, .ex = explanation. The header, timer, question counter, progress bar and
+   palette are deliberately not in this list, so the taskbar never grows. */
+function runnerScaleCss() {
+  const p = Math.max(60, Math.min(250, +S.set.font || 100));
   if (p === 100) return '';
   const z = p / 100;
-
-  if (!S.runner) return 'html{zoom:' + z + ' !important}';
-
-  return '#root main>.q,#root .opts,#root .nav,#root .rv,#root .ex{zoom:' + z + ' !important}' +
-    '#root .rv .ex,#root main>.q .ex,#root .opts .ex,#root .nav .ex{zoom:1 !important}' +
-    (z > 1
-      ? '#root{overflow-y:auto;-webkit-overflow-scrolling:touch}#root>header{position:sticky;top:env(safe-area-inset-top,0px);z-index:6}#root>main{flex:none;overflow:visible}'
-      : '');
+  return '#root{--hr-fs:' + z + '}'+
+    '#root .q{font-size:calc(clamp(16px,1.4vw,18.5px)*var(--hr-fs))!important}'+
+    '#root .rv .q{font-size:calc(17px*var(--hr-fs))!important}'+
+    '#root .opt{font-size:calc(clamp(15px,1.3vw,17px)*var(--hr-fs))!important}'+
+    '#root .rv .opt{font-size:calc(16px*var(--hr-fs))!important}'+
+    '#root .opt .l{font-size:calc(14.5px*var(--hr-fs))!important}'+
+    '#root .rv .mk{font-size:calc(12.5px*var(--hr-fs))!important}'+
+    '#root .btn{font-size:calc(14px*var(--hr-fs))!important}'+
+    '#root .ex{font-size:calc(14.5px*var(--hr-fs))!important}'+
+    '#root .answer-result{font-size:calc(15px*var(--hr-fs))!important}'+
+    '#root .choice-mark{font-size:calc(12px*var(--hr-fs))!important}'+
+    '#root .nav #savedState{font-size:calc(13px*var(--hr-fs))!important}';
+}
+function zoomCss() {
+  const p = +S.set.font || 100;
+  if (!S.runner) return p === 100 ? '' : 'html{zoom:' + (p / 100) + ' !important}';
+  return RUNNER_LAYOUT + runnerScaleCss();
 }
 
-const RUNNER_FIX='<script>(function(){var last="";function chk(){var r=document.getElementById("root");if(!r)return;var q=r.querySelector(".qn"),t=q?q.textContent:"";if(t!==last){last=t;r.scrollTop=0}}function go(){var r=document.getElementById("root");if(!r)return;new MutationObserver(chk).observe(r,{childList:true});chk()}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go()})()'+SCRIPT_END;
+const RUNNER_FIX='<script>(function(){var last="";function chk(){var r=document.getElementById("root");if(!r)return;var q=r.querySelector(".qn"),t=q?q.textContent:"";if(t!==last){last=t;var m=r.querySelector("main");if(m)m.scrollTop=0;r.scrollTop=0}}function go(){var r=document.getElementById("root");if(!r)return;new MutationObserver(chk).observe(r,{childList:true});chk()}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",go);else go()})()'+SCRIPT_END;
 function zoomTag(){return '<style id="hr-zoom">'+zoomCss()+'</style>'+(S.runner?RUNNER_FIX:'')}
 function applyFont(){const fr=$('#rframe iframe');if(!fr)return;fr.style.cssText='';
   try{const d=fr.contentDocument;if(!d||!d.documentElement)return;let st=d.getElementById('hr-zoom');
