@@ -1,6 +1,6 @@
 'use strict';
 // Cache names only change the app shell. IndexedDB and localStorage are untouched.
-const V = 'html-reader-question-format-v3';
+const V = 'html-reader-single-mcq-review-v4';
 const SHELL = [
   './', 'index.html', 'custom-module.html', 'manifest.webmanifest',
   'icon-180.png', 'icon-192.png', 'icon-512.png',

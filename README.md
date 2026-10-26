@@ -25,7 +25,7 @@ The Custom Module tab changes to a saved-module screen with **Review saved test*
 
 The original Reader library, imports, Favorites, Settings, display modes, Network Access, and offline shell remain available. The Reader's `••• → Font Size` control is a genuine **60%–250% slider**.
 
-On test pages (every library test, custom module and searched MCQ) the slider raises the **real font-size** of the question, the options and the buttons below them — the page is re-laid-out at the new size, never zoomed or bitmap-scaled, so text stays sharp at every step. The test's top bar (title, timer, progress, All-questions and End-test controls) keeps its normal size. Every question screen also uses the reference layout: the question scrolls in its own area while the options and the button row stay fixed at the bottom of the screen.
+On test pages (every library test, custom module and searched MCQ) the slider raises the **real font-size** of the question, the options and the buttons below them — the page is re-laid-out at the new size, never zoomed or bitmap-scaled, so text stays sharp at every step. The test's top bar (title, timer, progress, All-questions and End-test controls) keeps its normal size. Every question screen also uses the reference layout: the question scrolls in its own area while the options and the button row stay fixed at the bottom of the screen. Answering a searched MCQ switches that question to review mode: the marked options and the explanation join the scrollable page below the question (like the review screen of a full test), and **Try again** pins the options back at the bottom of the screen for the next attempt.
 
 ## Static source behaviour
 
