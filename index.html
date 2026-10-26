@@ -804,11 +804,14 @@ async function loadFrame(){
 const FONTS=[60,70,80,90,100,110,125,150,175,200,250];
 /* The reference question layout, forced on every test page (library tests, custom modules and
    searched MCQs): the question scrolls in its own area while the options and the button row
-   stay fixed at the bottom of the screen — at every font size. */
+   stay fixed at the bottom of the screen — at every font size. #root>.page covers the review,
+   results and start screens, whose .page must scroll in its own box (flex-basis 0, like main)
+   so the test's toTop() works and stepping to the next question always starts at the top. */
 const RUNNER_LAYOUT=
   '#root{height:auto!important;min-height:100%!important;display:flex!important;flex-direction:column!important}'+
   '#root>header{flex:none!important}'+
   '#root>main{flex:1 1 0!important;min-height:25vh!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'+
+  '#root>.page{flex:1 1 0!important;min-height:0!important;overflow:auto!important;-webkit-overflow-scrolling:touch}'+
   '#root>.opts,#root>.nav{flex:none!important}';
 /* Real font-size scaling for test pages. .q = question text, .opt = options, .btn = the buttons
    below the options, .ex = explanation. The header, timer, question counter, progress bar and
