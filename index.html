@@ -904,12 +904,12 @@ const MARROW_CSS=
   '#root.answered .choice-mark,#root.answered .answer-result{display:none!important}'+
   /* bottom bar: [☰] [☆] [☐ Guess] ......... PREV  SKIP/NEXT/SUBMIT — one row, one baseline.
      #root's own padding-bottom provides env(safe-area-inset-bottom), so the bar counts it once. */
-  '#root>.nav{background:var(--mw-bg)!important;padding:8px 16px 10px!important;gap:8px!important}'+
+  '#root>.nav{background:var(--mw-bg)!important;padding:8px 10px 10px 16px!important;gap:8px!important}'+
   '#root>.nav #mk,#root>.nav #gs{order:1;height:44px!important;padding:0!important;border-radius:12px!important;background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}'+
   '#root>.nav #mk{width:44px!important;min-width:44px!important;font-size:0!important}'+
   '#root>.nav #gs{width:auto!important;min-width:44px!important;padding:0 13px!important;gap:7px!important;font-size:13px!important;font-weight:600!important;color:#4a5559!important}'+
   '#root>.nav .sp{order:3;flex:1!important}'+
-  '#root>.nav #pv{order:4}'+
+  '#root>.nav #pv{order:4;margin-left:auto!important}'+
   '#root>.nav #nx{order:5}'+
   '#pl{margin:0!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:12px!important;background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;font-size:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}'+
   '#pl::after{content:"\\2630";font-size:19px;color:var(--mw-ink)}'+
@@ -920,8 +920,8 @@ const MARROW_CSS=
   '#gs.sel{background:var(--mw-sel)!important;border-color:#5fc3d8!important;color:var(--mw-teal-d)!important}'+
   '#gs.sel .cb{background:var(--mw-teal-d)!important;border-color:var(--mw-teal-d)!important;color:#fff!important}'+
   '#cl{display:none!important}'+
-  '#root.mw-single #en{display:none!important}'+
-  '#root>.nav #en{order:6;background:var(--mw-prev)!important;border:0!important;color:#28505f!important;font-weight:700!important;border-radius:99px!important;padding:9px 18px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
+  '#root>.nav #en{display:none!important}'+
+  '#root>.nav #en.mw-show{order:6;background:var(--mw-prev)!important;border:0!important;color:#28505f!important;font-weight:700!important;border-radius:99px!important;padding:9px 18px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#root>.nav #pv{background:var(--mw-prev)!important;border:0!important;color:#28505f!important;font-weight:700!important;border-radius:99px!important;padding:9px 18px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#root>.nav #nx{background:var(--mw-teal)!important;border:0!important;color:#fff!important;font-weight:700!important;border-radius:99px!important;padding:9px 20px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#nx[disabled]{opacity:1!important}'+
@@ -990,10 +990,12 @@ function marrowFix(){
       var pill=r.querySelector('.sec-pill'),sm=/Section\s+(\d+)\s*\/\s*(\d+)/.exec(pill?pill.textContent:'');
       if(sm)r.classList.remove('mw-single');else r.classList.add('mw-single');
       var lastSection=!sm||+sm[1]>=+sm[2],cnt=/(\d+)\s*of\s*(\d+)/.exec(qb?qb.textContent:''),lastQ=!!(cnt&&+cnt[1]>=+cnt[2]);
-      /* Section programming stays exactly as in the original test files: inside a section Next
-         behaves normally and is simply disabled at that section's last question — the End-section
-         button ends the section, just like the original. Only the very last question of the whole
-         test turns Next into SUBMIT. */
+      /* Section programming stays as in the original test files: inside a section Next behaves
+         normally and is simply disabled at that section's last question. The End-section button
+         stays out of the bar and appears at exactly that boundary — and only in multi-section
+         tests, never for the final section, whose last question says SUBMIT instead. */
+      var en=r.querySelector('#en');
+      if(en)en.classList.toggle('mw-show',!!sm&&!lastSection&&lastQ);
       if(lastQ&&lastSection){
         nx.removeAttribute('disabled');
         if(!nx.getAttribute('data-mw')){
