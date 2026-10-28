@@ -877,8 +877,9 @@ const MARROW_CSS=
   /* question area: "Question X of Y (Section N)" line removed on exam screens */
   '#root.mw-exam>main .qn-row{display:none!important}'+
   '#root>main{padding:14px 16px 6px!important}'+
-  /* option cards: one constant box height per question (all rows equal to the tallest) */
-  '#root .opts{display:grid!important;grid-template-columns:1fr 1fr!important;grid-auto-rows:1fr!important;gap:10px!important;padding:12px 2px 16px!important}'+
+  /* option cards: one exact box size (48px) with the same gap, whatever the text length */
+  '#root .opts{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;padding:12px 2px 16px!important}'+
+  '#root:not(.answered) .opts .opt{height:48px!important;min-height:48px!important;padding:4px 14px!important}'+
   '#root.answered .opts,.rv .opts{display:block!important;padding:4px 0 10px!important}'+
   '@media(max-width:640px){#root .opts{grid-template-columns:1fr!important}}'+
   '#root .opt{background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;border-radius:10px!important;box-shadow:none!important;min-height:46px!important;color:var(--mw-ink)!important;font-weight:400!important}'+
@@ -894,16 +895,16 @@ const MARROW_CSS=
   '.rv .mk{display:none!important}'+
   '.rv .tag{display:none!important}'+
   '#root.answered .choice-mark,#root.answered .answer-result{display:none!important}'+
-  /* bottom bar: [☰ fixed left] ☆ [☐ Guess] ......... PREV  SKIP/NEXT/SUBMIT — all 44px, one line with ☰ */
-  '#root>.nav{background:var(--mw-bg)!important;padding:8px 16px calc(10px + env(safe-area-inset-bottom))!important;gap:8px!important}'+
-  '#root.mw-exam>.nav{padding-left:70px!important}'+
+  /* bottom bar: [☰] [☆] [☐ Guess] ......... PREV  SKIP/NEXT/SUBMIT — one row, one baseline.
+     #root's own padding-bottom provides env(safe-area-inset-bottom), so the bar counts it once. */
+  '#root>.nav{background:var(--mw-bg)!important;padding:8px 16px 10px!important;gap:8px!important}'+
   '#root>.nav #mk,#root>.nav #gs{order:1;height:44px!important;padding:0!important;border-radius:12px!important;background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}'+
   '#root>.nav #mk{width:44px!important;min-width:44px!important;font-size:0!important}'+
   '#root>.nav #gs{width:auto!important;min-width:44px!important;padding:0 13px!important;gap:7px!important;font-size:13px!important;font-weight:600!important;color:#4a5559!important}'+
   '#root>.nav .sp{order:3;flex:1!important}'+
   '#root>.nav #pv{order:4}'+
   '#root>.nav #nx{order:5}'+
-  '#pl{position:fixed!important;left:12px!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;z-index:15!important;margin:0!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:12px!important;background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;font-size:0!important}'+
+  '#pl{margin:0!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:12px!important;background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;font-size:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}'+
   '#pl::after{content:"\\2630";font-size:19px;color:var(--mw-ink)}'+
   '#mk::after{content:"\\2606";font-size:19px;color:#98a4aa}'+
   '#mk.on{background:#fdf2df!important;border-color:#efc27a!important}'+
@@ -995,6 +996,24 @@ function timerPatch(){
    advances the section. Review cards get the cyan "Q MCQID" pill and PREV/NEXT/DONE labels. */
 function marrowFix(){
   var mwLast='',mwScroll=0;
+  /* Option boxes keep one exact height (48px) with the same gap between them whatever the text
+     length: text that would not fit steps its font size down until it does (floor 11px). Only
+     text that still cannot fit at the floor grows its box, so every option stays readable. */
+  function fitOpts(r){
+    if(r.classList.contains('answered'))return;
+    var list=r.querySelectorAll('.opts .opt');
+    for(var i=0;i<list.length;i++){
+      var o=list[i];
+      o.style.removeProperty('font-size');
+      o.style.removeProperty('height');
+      var fs=parseFloat(getComputedStyle(o).fontSize)||15,guard=0;
+      while((o.scrollHeight>o.clientHeight+1||o.scrollWidth>o.clientWidth+1)&&guard++<40&&fs>11){
+        fs-=0.5;
+        o.style.setProperty('font-size',fs+'px','important');
+      }
+      if(o.scrollHeight>o.clientHeight+1)o.style.setProperty('height','auto','important');
+    }
+  }
   function fix(){
     var r=document.getElementById('root');
     if(!r)return;
@@ -1004,6 +1023,9 @@ function marrowFix(){
       r.classList.add('mw-exam');
       var opts=r.querySelector('.opts');
       if(opts&&opts.parentElement!==main)main.appendChild(opts);
+      /* the all-questions button joins the button row, so every control shares one baseline */
+      var nav=r.querySelector('.nav'),plm=document.getElementById('pl');
+      if(plm&&nav&&plm.parentElement!==nav)nav.insertBefore(plm,nav.firstChild);
       var qb=r.querySelector('.qbadge');
       if(qb){
         var m=/Q\s*(\d+)\s*of\s*(\d+)/.exec(qb.textContent);
@@ -1062,12 +1084,16 @@ function marrowFix(){
     var q=r.querySelector('.qn'),t=q?q.textContent:'';
     if(t!==mwLast){mwLast=t;mwScroll=0;if(main)main.scrollTop=0;r.scrollTop=0;window.scrollTo(0,0)}
     else if(main&&mwScroll>0)main.scrollTop=mwScroll;
+    fitOpts(r);
   }
   function go(){
     var r=document.getElementById('root');
     if(!r)return;
     r.addEventListener('scroll',function(ev){var el=ev.target;if(el&&el.tagName==='MAIN')mwScroll=el.scrollTop},true);
     new MutationObserver(fix).observe(r,{childList:true});
+    /* the reader's font slider rewrites the #hr-zoom style element — re-fit the option text */
+    var zs=document.getElementById('hr-zoom');
+    if(zs)new MutationObserver(function(){fitOpts(r)}).observe(zs,{childList:true,characterData:true,subtree:true});
     fix();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
