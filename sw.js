@@ -1,11 +1,12 @@
 'use strict';
 // Cache names only change the app shell. IndexedDB and localStorage are untouched.
-const V = 'html-reader-marrow-theme-v6';
+const V = 'html-reader-marrow-polish-v7';
 const SHELL = [
   './', 'index.html', 'custom-module.html', 'manifest.webmanifest',
   'icon-180.png', 'icon-192.png', 'icon-512.png',
   'assets/liquid-glass.css', 'assets/liquid-glass.js',
-  'assets/mcq-search.css', 'assets/mcq-search.js', 'assets/mcq-question-index.json'
+  'assets/mcq-search.css', 'assets/mcq-search.js', 'assets/mcq-question-index.json',
+  'assets/fonts/inter-latin-400-normal.woff2', 'assets/fonts/inter-latin-700-normal.woff2'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(V).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
