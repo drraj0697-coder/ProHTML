@@ -1,6 +1,6 @@
 'use strict';
 // Cache names only change the app shell. IndexedDB and localStorage are untouched.
-const V = 'html-reader-marrow-boundary-v10';
+const V = 'html-reader-marrow-stable-next-v11';
 const SHELL = [
   './', 'index.html', 'custom-module.html', 'manifest.webmanifest',
   'icon-180.png', 'icon-192.png', 'icon-512.png',
