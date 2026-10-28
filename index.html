@@ -900,6 +900,7 @@ const MARROW_CSS=
   '#root .q img,#root .ex img{margin-left:auto!important;margin-right:auto!important}'+
   /* review screens: colours only, no extra text */
   '.rv .mk{display:none!important}'+
+  '.mw-skipnote{margin:12px 14px 2px!important;padding:0!important;background:none!important;border:0!important;color:#e02f2f!important;font-size:13.5px!important;font-weight:400!important;text-align:left!important}'+
   '.rv .tag{display:none!important}'+
   '#root.answered .choice-mark,#root.answered .answer-result{display:none!important}'+
   /* bottom bar: [☰] [☆] [☐ Guess] ......... PREV  SKIP/NEXT/SUBMIT — one row, one baseline.
@@ -1013,6 +1014,15 @@ function marrowFix(){
     if(rn)r.classList.add('mw-review');else r.classList.remove('mw-review');
     var card=r.querySelector('.card.rv');
     if(card){
+      /* skipped-question note: "You skipped this question" below the options (review only) */
+      if(card.querySelector('.qn-row .tag.un')&&!card.querySelector('.mw-skipnote')){
+        var exN=card.querySelector('.ex'),opN=card.querySelectorAll('.opt');
+        var note=document.createElement('div');
+        note.className='mw-skipnote';
+        note.textContent='You skipped this question';
+        if(exN)card.insertBefore(note,exN);
+        else if(opN.length)card.insertBefore(note,opN[opN.length-1].nextSibling);
+      }
       var row=card.querySelector('.qn-row');
       if(row){
         var qns=row.querySelectorAll('.qn'),first=qns[0];
