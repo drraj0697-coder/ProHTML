@@ -827,9 +827,9 @@ function runnerScaleCss() {
   return '#root{--hr-fs:' + z + '}'+
     '#root .q{font-size:calc(clamp(16px,1.4vw,18.5px)*var(--hr-fs))!important}'+
     '#root .rv .q{font-size:calc(17px*var(--hr-fs))!important}'+
-    '#root .opt{font-size:calc(clamp(14px,1.2vw,16px)*var(--hr-fs))!important}'+
+    '#root .opt{font-size:calc(16px*var(--hr-fs))!important}'+
     '#root .rv .opt{font-size:calc(15px*var(--hr-fs))!important}'+
-    '#root .opt .l{font-size:calc(13.5px*var(--hr-fs))!important}'+
+    '#root .opt .l{font-size:calc(11px*var(--hr-fs))!important}'+
     '#root .rv .mk{font-size:calc(12.5px*var(--hr-fs))!important}'+
     '#root .btn{font-size:calc(14px*var(--hr-fs))!important}'+
     '#root .ex{font-size:calc(14.5px*var(--hr-fs))!important}'+
@@ -855,7 +855,7 @@ const MW_FONT='Inter,-apple-system,"SF Pro Text","Helvetica Neue",Arial,sans-ser
 const MARROW_CSS=
   '@font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url('+FONT_400+') format("woff2")}'+
   '@font-face{font-family:Inter;font-style:normal;font-weight:700;font-display:swap;src:url('+FONT_700+') format("woff2")}'+
-  ':root{--mw-bg:#f0f0f0;--mw-card:#f8f8f8;--mw-sel:#c8f0f8;--mw-teal:#70d0e0;--mw-teal-d:#1f95ad;--mw-ink:#3d474b;--mw-mut:#8a979d;--mw-line:#e2e7e7;--mw-prev:#d8e8f0}'+
+  ':root{--mw-bg:#f6f6f6;--mw-card:#f8f8f8;--mw-sel:#c8f3ff;--mw-teal:#70d0e0;--mw-teal-d:#1f95ad;--mw-ink:#3d474b;--mw-mut:#8a979d;--mw-line:#e2e7e7;--mw-prev:#d8e8f0}'+
   'html,body{background:var(--mw-bg)!important}'+
   '#root{background:var(--mw-bg)!important}'+
   /* Marrow typeface on the whole test screen and the review page (timer stays monospace) */
@@ -870,23 +870,30 @@ const MARROW_CSS=
   '#root>header .timer{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;font:700 15px/1 ui-monospace,"SF Mono",Menlo,monospace!important;color:var(--mw-ink)!important;min-width:58px!important;text-align:center!important}'+
   '#root>header .timer.low{color:#d9534f!important}'+
   '#root.mw-exam>header .fsb{display:none!important}'+
-  '#root.mw-exam>header .brand{margin-right:0!important}'+
+  '#root.mw-exam>header .brand{display:none!important}'+
+  '#root.mw-single>header .sec-pill{display:none!important}'+
   '#root.mw-exam>header .qtop{flex:1!important}'+
   '#root>header .x{border:0!important;background:none!important;font-size:18px!important;color:#6a767c!important}'+
   '@media(max-width:560px){#root>header .timer{position:static!important;transform:none!important}}'+
   /* question area: "Question X of Y (Section N)" line removed on exam screens */
+  /* question area: "Question X of Y (Section N)" line removed on exam screens */
   '#root.mw-exam>main .qn-row{display:none!important}'+
-  '#root>main{padding:14px 16px 6px!important}'+
-  /* option cards: one exact box size (48px) with the same gap, whatever the text length */
-  '#root .opts{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;padding:12px 2px 16px!important}'+
-  '#root:not(.answered) .opts .opt{height:48px!important;min-height:48px!important;padding:4px 14px!important}'+
+  /* question area: text, pill row and options all align at 20px like the reference */
+  '#root>main{padding:14px 0 6px!important}'+
+  '#root>main>.q{padding:0 20px!important;margin-bottom:12px!important}'+
+  '#root>main .qn-row{padding-left:20px!important;padding-right:20px!important}'+
+  '#root>main .ex{margin-left:20px!important;margin-right:20px!important}'+
+  /* option grid and boxes — exact reference values (IMG-0129) */
+  '#root .opts{display:grid!important;grid-template-columns:1fr 1fr!important;column-gap:39px!important;row-gap:10px!important;padding:0 20px!important}'+
+  '#root:not(.answered) .opts .opt{height:88px!important;min-height:0!important;padding:0 0 0 20px!important}'+
   '#root.answered .opts,.rv .opts{display:block!important;padding:4px 0 10px!important}'+
   '@media(max-width:640px){#root .opts{grid-template-columns:1fr!important}}'+
-  '#root .opt{background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;border-radius:10px!important;box-shadow:none!important;min-height:46px!important;color:var(--mw-ink)!important;font-weight:400!important}'+
-  '#root .opt.sel{background:var(--mw-sel)!important;border-color:#5fc3d8!important}'+
-  '#root .opt .l{color:var(--mw-mut)!important;font-weight:700!important}'+
-  '#root .opt.ok{background:#e9f7ee!important;border-color:#bfe5cc!important}'+
-  '#root .opt.no{background:#fdefec!important;border-color:#f2c7c0!important}'+
+  '#root .opt{background:#ffffff!important;border:none!important;border-radius:4px!important;box-shadow:0 1px 4px rgba(0,0,0,0.12)!important;min-height:46px!important;color:#000000!important;font-weight:400!important;gap:0!important;transition:none!important}'+
+  '#root .opt .l{font-size:11px!important;color:#aaaaaa!important;font-weight:400!important;margin-right:6px!important;flex:none!important}'+
+  '#root .opt.sel{background:#c8f3ff!important;color:#777777!important}'+
+  '#root .opt.sel .l{color:#999999!important}'+
+  '#root .opt.ok{background:#e9f7ee!important}'+
+  '#root .opt.no{background:#fdefec!important}'+
   /* Marrow hierarchy: question bold, options regular; question images centered on screen */
   '#root .q{font-weight:700!important}'+
   '#root .q .img-wrap{justify-content:center!important}'+
@@ -912,7 +919,9 @@ const MARROW_CSS=
   '#gs .cb{width:16px!important;height:16px!important;border:2px solid #98a4aa!important;background:#fff!important;flex:none!important}'+
   '#gs.sel{background:var(--mw-sel)!important;border-color:#5fc3d8!important;color:var(--mw-teal-d)!important}'+
   '#gs.sel .cb{background:var(--mw-teal-d)!important;border-color:var(--mw-teal-d)!important;color:#fff!important}'+
-  '#cl,#en{display:none!important}'+
+  '#cl{display:none!important}'+
+  '#root.mw-single #en{display:none!important}'+
+  '#root>.nav #en{order:6;background:var(--mw-prev)!important;border:0!important;color:#28505f!important;font-weight:700!important;border-radius:99px!important;padding:9px 18px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#root>.nav #pv{background:var(--mw-prev)!important;border:0!important;color:#28505f!important;font-weight:700!important;border-radius:99px!important;padding:9px 18px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#root>.nav #nx{background:var(--mw-teal)!important;border:0!important;color:#fff!important;font-weight:700!important;border-radius:99px!important;padding:9px 20px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#nx[disabled]{opacity:1!important}'+
@@ -937,59 +946,6 @@ const MARROW_CSS=
   '#root.mw-review .nav #rn,#root.mw-review .nav #bk{background:var(--mw-teal)!important;border:0!important;color:#fff!important;font-weight:700!important;border-radius:99px!important;padding:9px 20px!important;height:44px!important;display:inline-flex!important;align-items:center!important}'+
   '#root.mw-review .nav #rl{background:var(--mw-card)!important;border:1.5px solid var(--mw-line)!important;border-radius:12px!important;font-size:0!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}'+
   '#root.mw-review .nav #rl::after{content:"\\2630";font-size:19px;color:var(--mw-ink)}';
-/* Keeps the section clock honest when the app was closed or backgrounded: if a section's time
-   already ended while away, jump straight to the section that should be running now (counted
-   from the moment it should have started) — or submit the test if everything expired. Works by
-   patching the saved state before the test page reads it, so it also fixes existing test files. */
-function timerPatch(){
-  try{
-    /* Storage uses [LegacyOverrideBuiltIns], so an own-property getItem would just create a
-       bogus storage entry — the wrap has to go on Storage.prototype (this iframe's own realm). */
-    var proto=Object.getPrototypeOf(localStorage),orig=proto.getItem;
-    proto.getItem=function(k){
-      var v=orig.call(this,k);
-      if(typeof k==='string'&&k.indexOf('gt_')===0&&v){
-        try{
-          var cfg=null;
-          for(var i=0;i<document.scripts.length&&!cfg;i++){
-            var src=document.scripts[i].textContent||'',mk='const RAW_CFG = ',s=src.indexOf(mk);
-            if(s<0)continue;
-            var o=s+mk.length;
-            if(src.charAt(o)!=='{')continue;
-            var d=0,str=false,esc=false,e=o;
-            for(;e<src.length;e++){
-              var c=src.charAt(e);
-              if(str){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')str=false}
-              else if(c==='"')str=true;else if(c==='{')d++;else if(c==='}'){d--;if(!d){e++;break}}
-            }
-            try{cfg=JSON.parse(src.slice(o,e))}catch(err){}
-          }
-          if(cfg){
-            var cands=cfg.tests&&cfg.tests.length?cfg.tests:[cfg];
-            for(var ci=0;ci<cands.length;ci++){
-              var c=cands[ci];
-              if(!c||!c.questions||!c.minutes)continue;
-              var Q=c.questions,sig=''+c.title+'|'+Q.length+'|'+(Q[0]?(''+Q[0].q).slice(0,60):''),h=0;
-              for(var j=0;j<sig.length;j++)h=(h*31+sig.charCodeAt(j))|0;
-              if('gt_'+h!==k)continue;
-              var St=JSON.parse(v),DUR=c.minutes*60000,N=c.sections||1,guard=0;
-              if(St&&St.phase==='exam'&&St.start&&St.start[St.sec]){
-                while(St.phase==='exam'&&guard++<24){
-                  if(DUR-(Date.now()-St.start[St.sec])>0)break;
-                  if(St.sec<N-1){var p=St.sec;St.sec++;if(St.start[St.sec]==null)St.start[St.sec]=St.start[p]+DUR}
-                  else St.phase='done';
-                }
-                v=JSON.stringify(St);
-              }
-              break;
-            }
-          }
-        }catch(e){}
-      }
-      return v;
-    };
-  }catch(e){}
-}
 /* Marrow behaviour on every render: options join the scrollable question area; the bottom bar
    shows ☰ (all questions), ☆ (mark for review), ? (guess), PREV and SKIP/NEXT/SUBMIT; the last
    question of the test turns Next into SUBMIT (confirmation) and a section's last question
@@ -1032,18 +988,20 @@ function marrowFix(){
         if(m&&qb.textContent!==m[1]+' of '+m[2])qb.textContent=m[1]+' of '+m[2];
       }
       var pill=r.querySelector('.sec-pill'),sm=/Section\s+(\d+)\s*\/\s*(\d+)/.exec(pill?pill.textContent:'');
+      if(sm)r.classList.remove('mw-single');else r.classList.add('mw-single');
       var lastSection=!sm||+sm[1]>=+sm[2],cnt=/(\d+)\s*of\s*(\d+)/.exec(qb?qb.textContent:''),lastQ=!!(cnt&&+cnt[1]>=+cnt[2]);
-      if(lastQ){
+      /* Section programming stays exactly as in the original test files: inside a section Next
+         behaves normally and is simply disabled at that section's last question — the End-section
+         button ends the section, just like the original. Only the very last question of the whole
+         test turns Next into SUBMIT. */
+      if(lastQ&&lastSection){
         nx.removeAttribute('disabled');
         if(!nx.getAttribute('data-mw')){
           nx.setAttribute('data-mw','1');
-          nx.addEventListener('click',function(){
-            var t=document.getElementById(lastSection?'x':'en');
-            if(t)t.click();
-          });
+          nx.addEventListener('click',function(){var t=document.getElementById('x');if(t)t.click()});
         }
       }
-      var lbl=lastQ?(lastSection?'SUBMIT':'NEXT'):(r.querySelector('.opt.sel')?'NEXT':'SKIP');
+      var lbl=(lastQ&&lastSection)?'SUBMIT':(r.querySelector('.opt.sel')?'NEXT':'SKIP');
       if(nx.textContent!==lbl)nx.textContent=lbl;
       nx.setAttribute('aria-label',lbl==='SUBMIT'?'Submit test':(lbl==='SKIP'?'Skip to the next question':'Next question'));
     }else{
@@ -1098,9 +1056,8 @@ function marrowFix(){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
 }
-const TIMER_FIX='<script>('+timerPatch.toString()+')()'+SCRIPT_END;
 const THEME_FIX='<script>('+marrowFix.toString()+')()'+SCRIPT_END;
-function zoomTag(){return '<style id="hr-zoom">'+zoomCss()+'</style>'+(S.runner?'<style id="hr-theme">'+MARROW_CSS+'</style>'+TIMER_FIX+THEME_FIX:'')}
+function zoomTag(){return '<style id="hr-zoom">'+zoomCss()+'</style>'+(S.runner?'<style id="hr-theme">'+MARROW_CSS+'</style>'+THEME_FIX:'')}
 function applyFont(){const fr=$('#rframe iframe');if(!fr)return;fr.style.cssText='';
   try{const d=fr.contentDocument;if(!d||!d.documentElement)return;let st=d.getElementById('hr-zoom');
     if(!st){st=d.createElement('style');st.id='hr-zoom';(d.head||d.documentElement).appendChild(st)}
