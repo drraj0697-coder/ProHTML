@@ -101,6 +101,11 @@ svg.i.star{color:#f4a600;width:20px;height:20px;fill:#f4a600;margin-right:2px}
 .sw input:focus-visible+i{outline:3px solid var(--accent);outline-offset:2px}
 .danger{color:var(--bad);font-weight:600}
 select.sel{background:var(--pill-on);border:0;border-radius:10px;padding:8px 12px;font-size:16px;color:var(--ink)}
+.ai-in{background:var(--pill-on);border:0;border-radius:10px;padding:8px 12px;font-size:16px;color:var(--ink);width:min(46%,260px);min-width:0}
+.ai-in.sm{width:84px;text-align:right}
+.ai-bar{display:block;height:6px;border-radius:3px;background:var(--line);margin-top:10px;overflow:hidden}
+.ai-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.set.ai-go{color:var(--accent);font-weight:600}
 
 /* ---------- reader ---------- */
 #reader{position:fixed;inset:0;z-index:50;background:var(--bg)}
@@ -495,6 +500,7 @@ function renderSettings(v){
    '<label class="set"><span class="lb">Fix broken images<small>Retries blocked or hot-linked images, such as AWS links, through another route</small></span><span class="sw"><input type="checkbox" id="sFix"><i></i></span></label>'+
    '<label class="set"><span class="lb">Split question points<small>Shows points i), ii), iii) and lines like Hb- 6 g/dL one below the other</small></span><span class="sw"><input type="checkbox" id="sFmt"><i></i></span></label>'+
    '</div></div>'+
+   SUBJ_AI.html()+
    '<div class="sec"><h2>Storage</h2><div class="card"><div class="set"><span class="lb">'+S.files.length+' file'+(S.files.length===1?'':'s')+'<small>'+fmtSize(total)+' on this device. Files never leave it.</small></span></div>'+
    '<button class="set danger" id="sWipe">Remove all files</button></div></div>'+
    '<div class="sec"><h2>About</h2><div class="card"><div class="set"><span class="lb">'+(standalone()?'Running as an app':'Use it like an app')+'<small>'+(standalone()?'Installed on your Home Screen. Works offline for files you have added.':'In Safari tap Share, then Add to Home Screen.')+'</small></span></div></div></div>';
@@ -508,6 +514,7 @@ function renderSettings(v){
   $('#sNet').onchange=e=>{S.set.net=e.target.checked;saveSet()};
   $('#sFix').onchange=e=>{S.set.fix=e.target.checked;saveSet()};
   $('#sFmt').onchange=e=>{S.set.fmt=e.target.checked;saveSet()};
+  SUBJ_AI.bind();
   let armed=0;$('#sWipe').onclick=e=>{const b=e.currentTarget;if(!S.files.length){toast('There are no files to remove.');return}if(!armed){armed=1;b.textContent='Tap again to remove everything';setTimeout(()=>{armed=0;if(b.isConnected)b.textContent='Remove all files'},3500);return}
     S.files.forEach(f=>dropMeta(f.id));S.files=[];DB.clear();render();toast('All files removed.')}}
 
@@ -776,19 +783,18 @@ function applyPattern(text){
   R('m.sc=m.c*CFG.mc-m.w*CFG.mw;','m.sc=R2(m.c*CFG.mc-m.w*CFG.mw);');
   return out}
 
-/* ===== Subject classification (v15) =====
+/* ===== Subject classification (v14) =====
    Each question in a test file carries its subject in its own "s" field; questions without a
    usable one were dumped by the template into a misleading "Medicine" group — which is why
    grand tests showed every MCQ bunched together. Before the test HTML is handed to the reader
    frame, this pass gives every question a real subject: known abbreviations are normalized
    (PSM, OBG, FMT…), then the question, its options and its explanation are scanned for
-   subject-indicating keywords. A test whose title/file names exactly one subject is a subject
-   test — every MCQ in it belongs to that subject. A grand test (no single subject in the name)
-   is classified question by question, and a single subject covering nearly the whole paper is
-   treated as the template's default dump, not as real classification. Only what no evidence
-   could place is left "Unclassified" — an honest group the template's subject list is extended
-   with — so the review dropdown and the score summary show only the subjects the test actually
-   contains, and the existing per-question subject picker can still move any question anywhere. */
+   subject-indicating keywords, and a test whose title names exactly one subject adopts it as
+   the fallback. Only what no evidence could place is left "Unclassified" — an honest group the
+   template's subject list is extended with — so the review dropdown and the score summary show
+   only the subjects the test actually contains, and the existing per-question subject picker
+   can still move any question anywhere. Files whose questions all carry a valid subject are
+   returned byte-identical. */
 const SUBJ_NAMES=['Anatomy','Physiology','Biochemistry','Pathology','Pharmacology','Microbiology','Forensic Medicine','Community Medicine (PSM)','ENT','Ophthalmology','Medicine','Surgery','Obstetrics & Gynaecology','Paediatrics','Orthopaedics','Dermatology','Psychiatry','Anaesthesia','Radiology'];
 const SUBJ_ALIAS={'anatomy':'Anatomy','anat':'Anatomy','physiology':'Physiology','physio':'Physiology','biochemistry':'Biochemistry','biochem':'Biochemistry','pathology':'Pathology','path':'Pathology','pharmacology':'Pharmacology','pharma':'Pharmacology','pharmac':'Pharmacology','microbiology':'Microbiology','microbio':'Microbiology','micro':'Microbiology','forensic medicine':'Forensic Medicine','forensic':'Forensic Medicine','fmt':'Forensic Medicine','fm':'Forensic Medicine','community medicine (psm)':'Community Medicine (PSM)','community medicine':'Community Medicine (PSM)','preventive and social medicine':'Community Medicine (PSM)','preventive medicine':'Community Medicine (PSM)','psm':'Community Medicine (PSM)','ent':'ENT','otorhinolaryngology':'ENT','orl':'ENT','ophthalmology':'Ophthalmology','ophthalm':'Ophthalmology','ophthal':'Ophthalmology','medicine':'Medicine','general medicine':'Medicine','surgery':'Surgery','general surgery':'Surgery','surg':'Surgery','obstetrics & gynaecology':'Obstetrics & Gynaecology','obstetrics and gynaecology':'Obstetrics & Gynaecology','obstetrics and gynecology':'Obstetrics & Gynaecology','obstetrics':'Obstetrics & Gynaecology','gynaecology':'Obstetrics & Gynaecology','gynecology':'Obstetrics & Gynaecology','obg':'Obstetrics & Gynaecology','obgyn':'Obstetrics & Gynaecology','obs and gyn':'Obstetrics & Gynaecology','obs & gyn':'Obstetrics & Gynaecology','paediatrics':'Paediatrics','pediatrics':'Paediatrics','paediatric':'Paediatrics','pediatric':'Paediatrics','paeds':'Paediatrics','peds':'Paediatrics','orthopaedics':'Orthopaedics','orthopedics':'Orthopaedics','ortho':'Orthopaedics','dermatology':'Dermatology','derm':'Dermatology','venereology':'Dermatology','skin':'Dermatology','psychiatry':'Psychiatry','psych':'Psychiatry','anaesthesia':'Anaesthesia','anesthesia':'Anaesthesia','anaesthesiology':'Anaesthesia','anesthesiology':'Anaesthesia','radiology':'Radiology','radiodiagnosis':'Radiology','radio':'Radiology'};
 SUBJ_NAMES.forEach(n=>{SUBJ_ALIAS[n.toLowerCase()]=n});
@@ -830,12 +836,9 @@ function subjFromTitle(t){
   const low=t.toLowerCase();const found=[];
   for(let i=0;i<SUBJ_T_RE.length;i++){if(SUBJ_T_RE[i][1].test(low)&&found.indexOf(SUBJ_T_RE[i][0])<0)found.push(SUBJ_T_RE[i][0])}
   return found.length===1?found[0]:null}
-/* stem=true scores only the question and its options; the explanation is left out. Long
-   explanations mention many subjects, so the stem is the better tie-breaker. */
-function subjScore(q,stem){
+function subjClassify(q,titleSubj){
   const o=Array.isArray(q&&q.o)?q.o:[];
-  let text=String((q&&q.q)||'')+' '+o.join(' ');
-  if(!stem)text+=' '+String((q&&q.e)||'');
+  const text=String((q&&q.q)||'')+' '+o.join(' ')+' '+String((q&&q.e)||'');
   const low=text.toLowerCase().replace(/<[^>]*>/g,' ');
   let best=null,top=0,second=0;
   for(const s in SUBJ_KW){
@@ -843,122 +846,228 @@ function subjScore(q,stem){
     for(let i=0;i<ks.length;i++)if(ks[i][1].test(low))v+=ks[i][0];
     if(v>0){if(v>top){second=top;top=v;best=s}else if(v>second)second=v}
   }
-  return{best,top,second}}
-/* Strong evidence assigns straight away. A single best subject with at least two points and a
-   clear lead also assigns — otherwise a grand test would leave a third of its MCQs unclassified
-   and the review dropdown would still look empty. When the full text is tied or weak, the stem
-   decides; only a question with no usable signal is left for the caller (file subject, or
-   Unclassified). */
-function subjClassify(q,fallback){
-  const r=subjScore(q);let best=null;
-  if(r.best&&((r.top>=3&&r.top-r.second>=2)||(r.top>=6&&r.top-r.second>=1)))best=r.best;
-  else if(r.best&&r.top>=2&&r.top>r.second)best=r.best;
-  else{
-    const s=subjScore(q,true);
-    if(s.best&&s.top>0&&(s.top>=2||s.top>s.second))best=s.best;
-    else if(r.best&&r.top>=2)best=r.best;
-    else if(s.best&&s.top>0)best=s.best;
-  }
-  return best||fallback||null}
-/* A grand/GT paper covers all 19 subjects; a subject test is named after exactly one subject.
-   Both signals are read from the test's own title and from the file name (…/Radiology.html),
-   because plenty of subject files carry a plain title such as "Inicet May 2023". */
-function subjGrandName(fileName,title){
-  const all=String(fileName||'')+' '+String(title||'');
-  return /\bgrand\b/i.test(all)||/\bgts?\b|\bgt[-_ ]?\d/i.test(all)}
-/* A single-test file may be called "Grand Test 3" while its own title names the subject; a
-   multi-test pack (test switcher) is judged on each test's title alone, so one file full of
-   subject tests still puts every MCQ in that subject. */
-function subjForced(title,fileName,multi){
-  const grand=multi?subjGrandName('',title):subjGrandName(fileName,title);
-  if(grand)return null;
-  return subjFromTitle(title)||(multi?null:subjFromTitle(String(fileName||'').replace(/\.(x?html?|shtml)$/i,'')))||null}
-/* The template recognises only the names in its own SUBJECT_LIST. Some test packs ship a
-   slightly different list ("Community Medicine", "Obs & Gyn", "General Medicine"…), so map our
-   canonical names onto the labels that file actually uses — otherwise a correct classification
-   would be silently turned back into "Medicine" by the template. */
-function subjTemplateList(text){
-  const m=/(?:const|let|var)\s+SUBJECT_LIST\s*=\s*\[([\s\S]*?)\]/.exec(text);
-  if(!m)return null;
-  const out=[],re=/'([^']*)'|"([^"]*)"/g;let x;
-  while((x=re.exec(m[1])))out.push(x[1]!==undefined?x[1]:x[2]);
-  return out.length?out:null}
-function subjLabelMap(list){
-  const map={};
-  if(!list)return map;
-  SUBJ_NAMES.forEach(name=>{
-    if(list.indexOf(name)>=0){map[name]=name;return}
-    for(let i=0;i<list.length;i++){
-      const other=list[i],norm=subjNorm(other)||subjFromTitle(other);
-      if(norm===name){map[name]=other;return}
-    }
-  });
-  return map}
+  if(best&&((top>=3&&top-second>=2)||(top>=6&&top-second>=1)))return best;
+  return titleSubj||'Unclassified'}
 /* Returns the test HTML with every question given an "s" it can trust (config JSON round-trip,
-   same serialization applyPattern uses). Files whose own subjects are already meaningful come
-   back byte-identical.
-   Two rules drive it, matching what a reader expects from each kind of test:
-   • Subject test (title/file names one subject, e.g. "Radiology – Inicet May 2023"): every MCQ
-     of that test belongs to that subject, whatever the source's "s" said.
-   • Grand test (no single subject in the name): each MCQ is classified on its own content.
-     A single subject repeated across almost the whole paper — the template's "Medicine" dump —
-     is not trusted as classification and is re-scored from the question, options and explanation. */
-function applySubjects(text,fileName){
+   same serialization applyPattern uses). Anything the file already classifies correctly comes
+   back byte-identical. */
+function applySubjects(text,ai){
   try{
     const sp=cfgSpan(text);if(!sp)return text;
     let cfg;try{cfg=JSON.parse(text.slice(sp[0],sp[1]))}catch(e){return text}
     const list=Array.isArray(cfg&&cfg.tests)?cfg.tests:[cfg];
     if(!list.some(c=>c&&Array.isArray(c.questions)))return text;
-    const tLabels=subjTemplateList(text),labelMap=subjLabelMap(tLabels),unknown={};
-    const multi=list.length>1;let changed=false;
+    let changed=false,anyUnc=false;
     list.forEach(c=>{
       if(!c||!Array.isArray(c.questions))return;
-      const qs=c.questions,title=c.title||c.brand||'';
-      let forced=subjForced(title,fileName,multi);
-      /* A custom module knows which subjects it contains: one means a subject test, several
-         mean a mixed module even if its chosen name happens to contain a subject word. */
-      if(Array.isArray(c.reviewSubjects)&&c.reviewSubjects.length){
-        const names=[];
-        c.reviewSubjects.forEach(r=>{const n=subjNorm(r)||subjFromTitle(r);if(n&&names.indexOf(n)<0)names.push(n)});
-        if(names.length===1)forced=names[0];else if(names.length>1)forced=null;
-      }
-      /* What the file itself claims, before we touch anything. */
-      const own=qs.map(q=>subjNorm(q&&q.s));
-      const counts={};let valid=0,max=0;
-      own.forEach(s=>{if(!s)return;valid++;counts[s]=(counts[s]||0)+1;if(counts[s]>max)max=counts[s]});
-      /* Only a grand paper can be a "dump": a named or small subject test is allowed to have
-         every MCQ in one subject. */
-      const grand=subjGrandName(fileName,title)||qs.length>=150;
-      const dumped=!forced&&grand&&valid>=6&&max/valid>=0.9;
-      qs.forEach((q,i)=>{
+      const ts=subjFromTitle(c.title||c.brand||'');
+      c.questions.forEach(q=>{
         if(!q||typeof q!=='object')return;
-        const cur=own[i];
-        let sub;
-        if(forced)sub=forced;                       /* subject test: one bucket for all MCQs */
-        else if(cur&&!dumped)sub=cur;               /* grand test keeps real source subjects */
-        else sub=subjClassify(q,dumped?null:cur);   /* classify, or trust the source's subject */
-        if(!sub)sub='Unclassified';
-        const label=(sub==='Unclassified')?sub:(labelMap[sub]||sub);
-        if(tLabels&&tLabels.indexOf(label)<0)unknown[label]=1;
-        if(q.s!==label){q.s=label;changed=true}
+        const cur=subjNorm(q.s);
+        if(cur){if(q.s!==cur){q.s=cur;changed=true}return}
+        const ak=ai&&SUBJ_AI.key(q),av=ak&&ai.get(ak);
+        if(av){q.s=av;changed=true;return}
+        const sub=subjClassify(q,ts);
+        q.s=sub;changed=true;
+        if(sub==='Unclassified')anyUnc=true
       })
     });
     if(!changed)return text;
     let out=text.slice(0,sp[0])+JSON.stringify(cfg).replace(/</g,'\\u003c')+text.slice(sp[1]);
-    /* Every subject actually used — including the honest Unclassified group and any name this
-       template's own list lacks — needs a place in SUBJECT_LIST (the dropdown, score cards and
-       the per-question picker all read it). */
-    const add=Object.keys(unknown);
-    if(add.length){
-      const m=/((?:const|let|var)\s+SUBJECT_LIST\s*=\s*\[[^\]]*)\]/.exec(out);
-      if(m){
-        const have=subjTemplateList(out)||[];
-        const put=add.filter(l=>have.indexOf(l)<0);
-        if(put.length)out=out.slice(0,m.index+m[1].length)+put.map(l=>",'"+String(l).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'").join('')+']'+out.slice(m.index+m[0].length);
-      }
+    /* the honest group needs a place in the template's subject list (dropdown, score cards
+       and the per-question picker all read it) */
+    if(anyUnc){
+      const m=/(const\s+SUBJECT_LIST\s*=\s*\[[^\]]*)\]/.exec(out);
+      if(m&&m[1].indexOf('Unclassified')<0)out=out.slice(0,m.index+m[1].length)+",'Unclassified']"+out.slice(m.index+m[0].length);
     }
     return out
   }catch(e){return text}}
+
+/* ===== AI subject classification (v15, Gemini, one-time bulk run) =====
+   Settings -> "AI subject classification" reads every library test once, sends each question with
+   its options and explanation to Gemini in batches, and saves one subject per question in its own
+   IndexedDB database on this device. Results are keyed by question CONTENT (not by file), so a
+   question that repeats in many tests is classified once. When a test opens, applySubjects()
+   looks the questions up here first; the keyword pass above stays as the fallback. Progress is
+   saved after every batch and every finished file is remembered, so Stop / interruptions / a
+   later Start simply continue. Subject tests (title names one subject) are skipped. */
+const SUBJ_AI=(()=>{
+  const DBN='html-reader-subjects',ST='subj',FLAG='ai.f.';
+  const DEF={key:'',model:'gemini-2.5-flash-lite',rpm:8,batch:40};
+  const cfg=()=>Object.assign({},DEF,LS.get('ai.cfg',{}));
+  const st={running:false,stop:false,note:'',err:'',fi:0,fn:0,added:0,missed:0,cached:0};
+  let dbp=null,wl=null;
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const clamp=(v,a,b,d)=>isFinite(v)&&v>=a?Math.min(b,Math.floor(v)):d;
+
+  /* ---- storage: its own database, so the library database is never touched ---- */
+  const open=()=>dbp||(dbp=new Promise((res,rej)=>{try{const r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>r.result.createObjectStore(ST);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}}));
+  const tx=async(mode,fn)=>{const db=await open();return new Promise((res,rej)=>{const t=db.transaction(ST,mode);fn(t.objectStore(ST));t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})};
+  const getMany=async keys=>{const out=new Map();if(!keys.length)return out;
+    try{await tx('readonly',os=>{keys.forEach(k=>{const r=os.get(k);r.onsuccess=()=>{if(r.result)out.set(k,r.result)}})})}catch(e){}
+    return out};
+  const putMany=e=>tx('readwrite',os=>{e.forEach(([k,v])=>os.put(v,k))});
+  const count=async()=>{let n=0;try{await tx('readonly',os=>{const r=os.count();r.onsuccess=()=>{n=r.result}})}catch(e){}return n};
+
+  /* ---- identity of a question: its text + options + image sources, case/markup-insensitive ---- */
+  const strip=s=>String(s==null?'':s).replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/\s+/g,' ').trim();
+  const imgs=s=>{const m=String(s==null?'':s).match(/<img[^>]+src=["'][^"']+["']/gi);return m?m.join(''):''};
+  function cyrb53(str){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<str.length;i++){const ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}
+    h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (4294967296*(2097151&h2)+(h1>>>0)).toString(36)}
+  const qKey=q=>{if(!q||typeof q!=='object')return null;const o=Array.isArray(q.o)?q.o:[];
+    const t=strip(q.q).toLowerCase()+'|'+o.map(x=>strip(x).toLowerCase()).join('|')+'|'+imgs(q.q);
+    return t.length<12?null:cyrb53(t)};
+  const usable=q=>strip(q.q).length+strip(q.e).length>=25;
+
+  /* ---- the request ---- */
+  const SYS='You are an expert NEET PG / INICET question-bank editor. Assign each MCQ to exactly ONE of these 19 MBBS subjects: '+SUBJ_NAMES.join('; ')+'.\n'+
+   'Rules:\n'+
+   '- Decide by the subject whose textbook the question really tests. Use the question, ALL options and especially the explanation.\n'+
+   '- Pharmacology: drug mechanism, adverse effects, dose, drug of choice, pharmacokinetics (even inside a clinical vignette). Microbiology: organisms, lab diagnosis, immunology, vaccines (immunology). Pathology: histopathology, disease mechanisms, tumours, haematology morphology. Biochemistry: metabolism, enzymes, vitamins, molecular biology, genetic techniques. Physiology: normal function. Anatomy: structure, embryology, histology, neuroanatomy.\n'+
+   '- Medicine vs Surgery vs Obstetrics & Gynaecology vs Paediatrics: choose the specialty whose diagnosis or management is being tested (a child with a medical illness is Paediatrics; pregnancy, labour or gynaecological disease is Obstetrics & Gynaecology; operative or surgical management is Surgery).\n'+
+   '- Community Medicine (PSM): epidemiology, biostatistics, health programmes, nutrition, occupational and environmental health, vaccination schedule and cold chain. Forensic Medicine: toxicology, autopsy, injuries, medico-legal aspects, identification.\n'+
+   '- ENT, Ophthalmology, Orthopaedics, Dermatology (skin, STI, leprosy), Psychiatry, Anaesthesia, Radiology: when the question is about that specialty\'s disease, procedure or imaging. Image-identification and imaging-sign questions with no clearer subject go to Radiology.\n'+
+   'Reply with JSON only: one entry {"i": id, "s": subject} for every input item, never skipping one. Use the subject names exactly as listed.';
+  async function call(items,c){
+    const body={systemInstruction:{parts:[{text:SYS}]},
+      contents:[{role:'user',parts:[{text:'Classify these MCQs.\n'+JSON.stringify(items)}]}],
+      generationConfig:{temperature:0,maxOutputTokens:8192,responseMimeType:'application/json',
+        responseSchema:{type:'ARRAY',items:{type:'OBJECT',properties:{i:{type:'INTEGER'},s:{type:'STRING',enum:SUBJ_NAMES}},required:['i','s']}}}};
+    let r;
+    try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',
+      {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':c.key},body:JSON.stringify(body)})}
+    catch(e){const x=new Error('No connection to Gemini');x.net=true;throw x}
+    if(!r.ok){let t='';try{t=await r.text()}catch(e){}
+      const x=new Error('Gemini error '+r.status);x.status=r.status;
+      let msg='';try{msg=JSON.parse(t).error.message}catch(e){}
+      if(r.status===429){x.daily=/PerDay/i.test(t);const m=/"retryDelay":\s*"([\d.]+)s"/.exec(t)||/retry in ([\d.]+)s/i.exec(t);x.retry=m?Math.ceil(+m[1])+2:0}
+      if(r.status===400||r.status===401||r.status===403||r.status===404){x.fatal=true;x.message='Gemini says: '+(msg||('error '+r.status))}
+      throw x}
+    const j=await r.json();let txt='';
+    try{txt=j.candidates[0].content.parts.map(p=>p.text||'').join('')}catch(e){}
+    txt=txt.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g,'').trim();
+    let arr;try{arr=JSON.parse(txt)}catch(e){const x=new Error('Unreadable answer from Gemini');x.soft=true;throw x}
+    return Array.isArray(arr)?arr:[]}
+
+  /* ---- keep the iPad awake while running ---- */
+  async function lock(){try{if(navigator.wakeLock&&!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+  async function unlock(){try{if(wl)await wl.release()}catch(e){}wl=null}
+  document.addEventListener('visibilitychange',()=>{if(st.running&&document.visibilityState==='visible')lock()});
+
+  /* ---- progress panel (lives in Settings; updated only when it is on screen) ---- */
+  function ui(){
+    const m=$('#aiMsg');if(!m)return;
+    const b=$('#aiGo');if(b)b.textContent=st.running?'Stop':'Start classifying';
+    const bar=$('#aiBar');if(bar)bar.style.width=(st.running&&st.fn?Math.round(st.fi/st.fn*100):0)+'%';
+    let t=st.running?'File '+st.fi+' of '+st.fn+' · '+st.added+' classified this run. ':'';
+    t+=st.err?st.err:(st.note||(st.running?'':st.cached+' question'+(st.cached===1?'':'s')+' classified and saved on this device.'));
+    m.textContent=t;m.style.color=st.err?'var(--bad)':''}
+
+  /* ---- the bulk run ---- */
+  async function run(){
+    if(st.running)return;
+    const c=cfg();if(!c.key){toast('Paste your Gemini API key first.');return}
+    Object.assign(st,{running:true,stop:false,note:'Starting…',err:'',fi:0,fn:0,added:0,missed:0});
+    const files=S.files.filter(f=>f&&f.blob&&!f.builtin&&!f.mcqLookup);
+    st.fn=files.length;st.cached=await count();ui();await lock();
+    const buf=[],fstate=new Map(),inflight=new Map();let last=0;
+    const gap=60000/Math.max(1,c.rpm);
+    const check=fid=>{const s=fstate.get(fid);if(s&&s.scanned&&s.left<=0){fstate.delete(fid);if(!s.bad)LS.set(FLAG+fid,s.size)}};
+    const resolve=(it,ok)=>{inflight.delete(it.k);it.fids.forEach(fid=>{const s=fstate.get(fid);if(!s)return;s.left--;if(!ok)s.bad=true;check(fid)})};
+    const wait=async(sec,msg)=>{for(let s=sec;s>0&&!st.stop;s--){st.note=msg+' — trying again in '+s+'s';ui();await sleep(1000)}st.note='';ui()};
+    const pace=async()=>{for(;;){const d=last+gap-Date.now();if(d<=0||st.stop)break;await sleep(Math.min(d,500))}last=Date.now()};
+    async function send(batch){
+      let tries=0;
+      for(;;){
+        await pace();if(st.stop)throw new Error('stopped');
+        st.note='Asking Gemini…';ui();
+        try{
+          const arr=await call(batch.map((it,i)=>({i,q:it.q,o:it.o,e:it.e})),c);
+          const got=new Map();
+          arr.forEach(a=>{const s=subjNorm(a&&a.s);if(s&&Number.isInteger(a.i)&&batch[a.i]&&!got.has(a.i))got.set(a.i,s)});
+          if(got.size)await putMany([...got].map(([i,s])=>[batch[i].k,s]));
+          st.cached+=got.size;st.note='';
+          batch.forEach((it,i)=>{
+            if(got.has(i)){resolve(it,true);st.added++}
+            else{it.tries++;if(it.tries>=3){resolve(it,false);st.missed++}else buf.push(it)}});
+          ui();return}
+        catch(e){
+          if(st.stop)throw e;
+          if(e.fatal)throw e;
+          if(e.daily){e.message='Free daily limit reached. Tap Start again after midnight Pacific time (afternoon in India); progress is saved.';throw e}
+          tries++;if(tries>6)throw e;
+          await wait(e.status===429?(e.retry||20*tries):Math.min(60,8*tries),e.status===429?'Free rate limit reached':(e.net?'Connection problem':'Retrying'))}}}
+    try{
+      for(const f of files){
+        if(st.stop)break;
+        st.fi++;st.note='Reading '+clean(f.name)+'…';ui();
+        if(LS.get(FLAG+f.id,null)===f.size)continue;
+        let obj=null;
+        try{obj=extractCfg(decodeBytes(await f.blob.arrayBuffer()))}catch(e){}
+        if(!obj){LS.set(FLAG+f.id,f.size);continue}
+        const fs={left:0,bad:false,scanned:false,size:f.size};fstate.set(f.id,fs);
+        const uniq=new Map();
+        (Array.isArray(obj.tests)?obj.tests:[obj]).forEach(t=>{
+          if(!t||!Array.isArray(t.questions))return;
+          const ttl=t.title||t.brand||'';
+          if(subjFromTitle(ttl)&&!/grand/i.test(ttl+' '+f.name))return;        /* one-subject test: no classification needed */
+          t.questions.forEach(q=>{if(!q||typeof q!=='object'||subjNorm(q.s)||!usable(q))return;const k=qKey(q);if(k&&!uniq.has(k))uniq.set(k,q)})});
+        const have=await getMany([...uniq.keys()]);
+        for(const [k,q] of uniq){
+          if(have.has(k))continue;
+          const ex=inflight.get(k);
+          if(ex){ex.fids.add(f.id);fs.left++;continue}
+          const o=Array.isArray(q.o)?q.o:[];
+          const it={k,q:strip(q.q).slice(0,800),o:o.map(x=>strip(x).slice(0,140)),e:strip(q.e).slice(0,700),fids:new Set([f.id]),tries:0};
+          inflight.set(k,it);fs.left++;buf.push(it)}
+        fs.scanned=true;check(f.id);
+        while(buf.length>=c.batch&&!st.stop)await send(buf.splice(0,c.batch));
+        await sleep(0)}
+      while(buf.length&&!st.stop)await send(buf.splice(0,c.batch));
+      if(!st.stop){st.note='Finished. Every test in your library is classified.';if(st.missed)st.note='Finished. '+st.missed+' question(s) could not be placed and use the keyword result.'}
+    }catch(e){if(!st.stop)st.err=e.message||'Stopped by an error'}
+    finally{
+      if(st.stop&&!st.err)st.note='Stopped. Progress is saved; tap Start to continue.';
+      st.running=false;await unlock();ui();
+      if(!st.err&&!st.stop)toast('Subject classification finished.')}}
+
+  /* ---- used when a test opens: key -> subject for the questions this test already has cached ---- */
+  async function mapFor(text){
+    try{
+      if(!(await count()))return null;
+      const sp=cfgSpan(text);if(!sp)return null;
+      const obj=JSON.parse(text.slice(sp[0],sp[1]));
+      const keys=new Set();
+      (Array.isArray(obj&&obj.tests)?obj.tests:[obj]).forEach(t=>{if(t&&Array.isArray(t.questions))t.questions.forEach(q=>{if(q&&!subjNorm(q.s)){const k=qKey(q);if(k)keys.add(k)}})});
+      return keys.size?await getMany([...keys]):null
+    }catch(e){return null}}
+
+  /* ---- Settings card ---- */
+  const html=()=>'<div class="sec"><h2>AI subject classification</h2><div class="card">'+
+    '<div class="set"><span class="lb">Classify tests with Gemini<small>One-time run. Reads every grand-test question with its options and explanation, then saves the subject on this device, so review pages open already sorted. Keep this screen open while it runs, and set Auto-Lock to Never. You can stop and continue any time.</small></span></div>'+
+    '<div class="set ai-row"><span class="lb">Gemini API key<small>Free from aistudio.google.com/apikey. Stays on this device.</small></span><input class="ai-in" id="aiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…"></div>'+
+    '<div class="set ai-row"><span class="lb">Model<small>Flash-Lite has the highest free limit.</small></span><input class="ai-in" id="aiModel" list="aiModels" autocomplete="off" autocapitalize="off" spellcheck="false"><datalist id="aiModels"><option value="gemini-2.5-flash-lite"><option value="gemini-2.5-flash"></datalist></div>'+
+    '<div class="set ai-row"><span class="lb">Requests per minute<small>Stay at or below your free limit (aistudio.google.com/rate-limit).</small></span><input class="ai-in sm" id="aiRpm" type="number" inputmode="numeric" min="1" max="60"></div>'+
+    '<div class="set ai-row"><span class="lb">Questions per request<small>More is faster; fewer is steadier.</small></span><input class="ai-in sm" id="aiBatch" type="number" inputmode="numeric" min="5" max="80"></div>'+
+    '<div class="set"><span class="lb"><small id="aiMsg" style="margin:0"></small><span class="ai-bar"><i id="aiBar"></i></span></span></div>'+
+    '<button class="set ai-go" id="aiGo">Start classifying</button>'+
+    '<button class="set danger" id="aiClear">Clear AI results</button>'+
+    '</div></div>';
+  function bind(){
+    const c=cfg();
+    $('#aiKey').value=c.key;$('#aiModel').value=c.model;$('#aiRpm').value=c.rpm;$('#aiBatch').value=c.batch;
+    const save=()=>LS.set('ai.cfg',{key:$('#aiKey').value.trim(),model:$('#aiModel').value.trim()||DEF.model,rpm:clamp(+$('#aiRpm').value,1,60,DEF.rpm),batch:clamp(+$('#aiBatch').value,5,80,DEF.batch)});
+    ['aiKey','aiModel','aiRpm','aiBatch'].forEach(id=>{$('#'+id).onchange=save});
+    $('#aiGo').onclick=()=>{save();if(st.running){st.stop=true;st.note='Stopping…';ui()}else run()};
+    let armed=0;$('#aiClear').onclick=async e=>{const b=e.currentTarget;
+      if(st.running){toast('Stop the run first.');return}
+      if(!armed){armed=1;b.textContent='Tap again to clear all AI results';setTimeout(()=>{armed=0;if(b.isConnected)b.textContent='Clear AI results'},3500);return}
+      armed=0;b.textContent='Clear AI results';
+      try{await tx('readwrite',os=>{os.clear()});Object.keys(localStorage).filter(k=>k.indexOf('hr.'+FLAG)===0).forEach(k=>localStorage.removeItem(k));st.cached=0;st.err='';st.note='';ui();toast('AI results cleared.')}catch(err){toast('Could not clear: '+err.message)}};
+    count().then(n=>{if(!st.running)st.cached=n;ui()});ui()}
+  return{run,bind,html,mapFor,key:qKey,state:st};
+})();
 
 async function openFile(id){
   const f=S.files.find(x=>x.id===id);if(!f)return;
@@ -973,10 +1082,9 @@ async function loadFrame(){
     let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
     if(!f.mcqLookup)text=applyPattern(text);
     S.runner=!!f.mcqLookup||/\bRAW_CFG\s*=/.test(text)||(/id=["']root["']/.test(text)&&/qn-row/.test(text));
-    /* give every question a real subject before the frame renders: a subject test gets its own
-       subject for every MCQ, a grand test is classified question by question (and a paper whose
-       questions all carry the same dumped subject is re-scored instead of trusted) */
-    if(!f.mcqLookup&&S.runner)text=applySubjects(text,f.name);
+    /* give every question a real subject before the frame renders (grand tests arrive with
+       none, so the template would dump them all into a fake "Medicine" group) */
+    if(!f.mcqLookup&&S.runner)text=applySubjects(text,await SUBJ_AI.mapFor(text));
     const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
     const markup=head?injectHead(text,head):text;
     const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
@@ -1165,7 +1273,6 @@ function marrowFix(){
     try{
       var f=r.querySelector('#fsub');
       if(f&&f.options&&f.options.length){
-        var heal=false;
         for(var i=f.options.length-1;i>=0;i--){
           var o=f.options[i];
           if(o.value==='all'){
@@ -1173,28 +1280,19 @@ function marrowFix(){
           }else if(/\(\s*0\s*\)\s*$/.test(o.textContent||'')){
             /* a saved filter can point at a subject the test lost after re-classification —
                drop the empty option and fall back to All subjects */
-            if(o.selected){heal=true;try{f.value='all'}catch(e){}}
+            var was=o.selected;
             if(f.removeChild)f.removeChild(o);
+            if(was){f.value='all';var ev=null;try{ev=new Event('change')}catch(e){}
+              if(ev&&f.dispatchEvent)f.dispatchEvent(ev)}
           }
-        }
-        /* Re-render after this pass is finished, never from inside it: dispatching change while
-           the review page is being rewritten used to leave the dropdown (and the question card)
-           on a stale subject. */
-        if(heal&&!f.getAttribute('data-hr-heal')){
-          f.setAttribute('data-hr-heal','1');
-          (function(sel){setTimeout(function(){try{var ev=null;try{ev=new Event('change')}catch(e){}
-            if(ev&&sel.dispatchEvent)sel.dispatchEvent(ev)}catch(e){}},0)})(f);
         }
       }
       var spans=r.querySelectorAll('h2.gh span');
       for(var j=0;j<spans.length;j++){
         var t=spans[j].textContent||'';
         if(t.indexOf('19 MBBS Subjects')>=0){
-          var cards=r.querySelectorAll('.sj'),n=0;
-          for(var c=0;c<cards.length;c++){
-            var h=cards[c].querySelector('h3');
-            if(!/^\s*Unclassified\b/.test(h?h.textContent:''))n++;
-          }
+          var cards=r.querySelectorAll('.sj');
+          var n=cards?cards.length:0;
           spans[j].textContent=t.replace('19 MBBS Subjects',n+(n===1?' subject':' subjects'));
         }
       }
