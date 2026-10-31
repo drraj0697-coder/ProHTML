@@ -776,18 +776,19 @@ function applyPattern(text){
   R('m.sc=m.c*CFG.mc-m.w*CFG.mw;','m.sc=R2(m.c*CFG.mc-m.w*CFG.mw);');
   return out}
 
-/* ===== Subject classification (v14) =====
+/* ===== Subject classification (v15) =====
    Each question in a test file carries its subject in its own "s" field; questions without a
    usable one were dumped by the template into a misleading "Medicine" group — which is why
    grand tests showed every MCQ bunched together. Before the test HTML is handed to the reader
    frame, this pass gives every question a real subject: known abbreviations are normalized
    (PSM, OBG, FMT…), then the question, its options and its explanation are scanned for
-   subject-indicating keywords, and a test whose title names exactly one subject adopts it as
-   the fallback. Only what no evidence could place is left "Unclassified" — an honest group the
-   template's subject list is extended with — so the review dropdown and the score summary show
-   only the subjects the test actually contains, and the existing per-question subject picker
-   can still move any question anywhere. Files whose questions all carry a valid subject are
-   returned byte-identical. */
+   subject-indicating keywords. A test whose title/file names exactly one subject is a subject
+   test — every MCQ in it belongs to that subject. A grand test (no single subject in the name)
+   is classified question by question, and a single subject covering nearly the whole paper is
+   treated as the template's default dump, not as real classification. Only what no evidence
+   could place is left "Unclassified" — an honest group the template's subject list is extended
+   with — so the review dropdown and the score summary show only the subjects the test actually
+   contains, and the existing per-question subject picker can still move any question anywhere. */
 const SUBJ_NAMES=['Anatomy','Physiology','Biochemistry','Pathology','Pharmacology','Microbiology','Forensic Medicine','Community Medicine (PSM)','ENT','Ophthalmology','Medicine','Surgery','Obstetrics & Gynaecology','Paediatrics','Orthopaedics','Dermatology','Psychiatry','Anaesthesia','Radiology'];
 const SUBJ_ALIAS={'anatomy':'Anatomy','anat':'Anatomy','physiology':'Physiology','physio':'Physiology','biochemistry':'Biochemistry','biochem':'Biochemistry','pathology':'Pathology','path':'Pathology','pharmacology':'Pharmacology','pharma':'Pharmacology','pharmac':'Pharmacology','microbiology':'Microbiology','microbio':'Microbiology','micro':'Microbiology','forensic medicine':'Forensic Medicine','forensic':'Forensic Medicine','fmt':'Forensic Medicine','fm':'Forensic Medicine','community medicine (psm)':'Community Medicine (PSM)','community medicine':'Community Medicine (PSM)','preventive and social medicine':'Community Medicine (PSM)','preventive medicine':'Community Medicine (PSM)','psm':'Community Medicine (PSM)','ent':'ENT','otorhinolaryngology':'ENT','orl':'ENT','ophthalmology':'Ophthalmology','ophthalm':'Ophthalmology','ophthal':'Ophthalmology','medicine':'Medicine','general medicine':'Medicine','surgery':'Surgery','general surgery':'Surgery','surg':'Surgery','obstetrics & gynaecology':'Obstetrics & Gynaecology','obstetrics and gynaecology':'Obstetrics & Gynaecology','obstetrics and gynecology':'Obstetrics & Gynaecology','obstetrics':'Obstetrics & Gynaecology','gynaecology':'Obstetrics & Gynaecology','gynecology':'Obstetrics & Gynaecology','obg':'Obstetrics & Gynaecology','obgyn':'Obstetrics & Gynaecology','obs and gyn':'Obstetrics & Gynaecology','obs & gyn':'Obstetrics & Gynaecology','paediatrics':'Paediatrics','pediatrics':'Paediatrics','paediatric':'Paediatrics','pediatric':'Paediatrics','paeds':'Paediatrics','peds':'Paediatrics','orthopaedics':'Orthopaedics','orthopedics':'Orthopaedics','ortho':'Orthopaedics','dermatology':'Dermatology','derm':'Dermatology','venereology':'Dermatology','skin':'Dermatology','psychiatry':'Psychiatry','psych':'Psychiatry','anaesthesia':'Anaesthesia','anesthesia':'Anaesthesia','anaesthesiology':'Anaesthesia','anesthesiology':'Anaesthesia','radiology':'Radiology','radiodiagnosis':'Radiology','radio':'Radiology'};
 SUBJ_NAMES.forEach(n=>{SUBJ_ALIAS[n.toLowerCase()]=n});
@@ -829,9 +830,12 @@ function subjFromTitle(t){
   const low=t.toLowerCase();const found=[];
   for(let i=0;i<SUBJ_T_RE.length;i++){if(SUBJ_T_RE[i][1].test(low)&&found.indexOf(SUBJ_T_RE[i][0])<0)found.push(SUBJ_T_RE[i][0])}
   return found.length===1?found[0]:null}
-function subjClassify(q,titleSubj){
+/* stem=true scores only the question and its options; the explanation is left out. Long
+   explanations mention many subjects, so the stem is the better tie-breaker. */
+function subjScore(q,stem){
   const o=Array.isArray(q&&q.o)?q.o:[];
-  const text=String((q&&q.q)||'')+' '+o.join(' ')+' '+String((q&&q.e)||'');
+  let text=String((q&&q.q)||'')+' '+o.join(' ');
+  if(!stem)text+=' '+String((q&&q.e)||'');
   const low=text.toLowerCase().replace(/<[^>]*>/g,' ');
   let best=null,top=0,second=0;
   for(const s in SUBJ_KW){
@@ -839,37 +843,119 @@ function subjClassify(q,titleSubj){
     for(let i=0;i<ks.length;i++)if(ks[i][1].test(low))v+=ks[i][0];
     if(v>0){if(v>top){second=top;top=v;best=s}else if(v>second)second=v}
   }
-  if(best&&((top>=3&&top-second>=2)||(top>=6&&top-second>=1)))return best;
-  return titleSubj||'Unclassified'}
+  return{best,top,second}}
+/* Strong evidence assigns straight away. A single best subject with at least two points and a
+   clear lead also assigns — otherwise a grand test would leave a third of its MCQs unclassified
+   and the review dropdown would still look empty. When the full text is tied or weak, the stem
+   decides; only a question with no usable signal is left for the caller (file subject, or
+   Unclassified). */
+function subjClassify(q,fallback){
+  const r=subjScore(q);let best=null;
+  if(r.best&&((r.top>=3&&r.top-r.second>=2)||(r.top>=6&&r.top-r.second>=1)))best=r.best;
+  else if(r.best&&r.top>=2&&r.top>r.second)best=r.best;
+  else{
+    const s=subjScore(q,true);
+    if(s.best&&s.top>0&&(s.top>=2||s.top>s.second))best=s.best;
+    else if(r.best&&r.top>=2)best=r.best;
+    else if(s.best&&s.top>0)best=s.best;
+  }
+  return best||fallback||null}
+/* A grand/GT paper covers all 19 subjects; a subject test is named after exactly one subject.
+   Both signals are read from the test's own title and from the file name (…/Radiology.html),
+   because plenty of subject files carry a plain title such as "Inicet May 2023". */
+function subjGrandName(fileName,title){
+  const all=String(fileName||'')+' '+String(title||'');
+  return /\bgrand\b/i.test(all)||/\bgts?\b|\bgt[-_ ]?\d/i.test(all)}
+/* A single-test file may be called "Grand Test 3" while its own title names the subject; a
+   multi-test pack (test switcher) is judged on each test's title alone, so one file full of
+   subject tests still puts every MCQ in that subject. */
+function subjForced(title,fileName,multi){
+  const grand=multi?subjGrandName('',title):subjGrandName(fileName,title);
+  if(grand)return null;
+  return subjFromTitle(title)||(multi?null:subjFromTitle(String(fileName||'').replace(/\.(x?html?|shtml)$/i,'')))||null}
+/* The template recognises only the names in its own SUBJECT_LIST. Some test packs ship a
+   slightly different list ("Community Medicine", "Obs & Gyn", "General Medicine"…), so map our
+   canonical names onto the labels that file actually uses — otherwise a correct classification
+   would be silently turned back into "Medicine" by the template. */
+function subjTemplateList(text){
+  const m=/(?:const|let|var)\s+SUBJECT_LIST\s*=\s*\[([\s\S]*?)\]/.exec(text);
+  if(!m)return null;
+  const out=[],re=/'([^']*)'|"([^"]*)"/g;let x;
+  while((x=re.exec(m[1])))out.push(x[1]!==undefined?x[1]:x[2]);
+  return out.length?out:null}
+function subjLabelMap(list){
+  const map={};
+  if(!list)return map;
+  SUBJ_NAMES.forEach(name=>{
+    if(list.indexOf(name)>=0){map[name]=name;return}
+    for(let i=0;i<list.length;i++){
+      const other=list[i],norm=subjNorm(other)||subjFromTitle(other);
+      if(norm===name){map[name]=other;return}
+    }
+  });
+  return map}
 /* Returns the test HTML with every question given an "s" it can trust (config JSON round-trip,
-   same serialization applyPattern uses). Anything the file already classifies correctly comes
-   back byte-identical. */
-function applySubjects(text){
+   same serialization applyPattern uses). Files whose own subjects are already meaningful come
+   back byte-identical.
+   Two rules drive it, matching what a reader expects from each kind of test:
+   • Subject test (title/file names one subject, e.g. "Radiology – Inicet May 2023"): every MCQ
+     of that test belongs to that subject, whatever the source's "s" said.
+   • Grand test (no single subject in the name): each MCQ is classified on its own content.
+     A single subject repeated across almost the whole paper — the template's "Medicine" dump —
+     is not trusted as classification and is re-scored from the question, options and explanation. */
+function applySubjects(text,fileName){
   try{
     const sp=cfgSpan(text);if(!sp)return text;
     let cfg;try{cfg=JSON.parse(text.slice(sp[0],sp[1]))}catch(e){return text}
     const list=Array.isArray(cfg&&cfg.tests)?cfg.tests:[cfg];
     if(!list.some(c=>c&&Array.isArray(c.questions)))return text;
-    let changed=false,anyUnc=false;
+    const tLabels=subjTemplateList(text),labelMap=subjLabelMap(tLabels),unknown={};
+    const multi=list.length>1;let changed=false;
     list.forEach(c=>{
       if(!c||!Array.isArray(c.questions))return;
-      const ts=subjFromTitle(c.title||c.brand||'');
-      c.questions.forEach(q=>{
+      const qs=c.questions,title=c.title||c.brand||'';
+      let forced=subjForced(title,fileName,multi);
+      /* A custom module knows which subjects it contains: one means a subject test, several
+         mean a mixed module even if its chosen name happens to contain a subject word. */
+      if(Array.isArray(c.reviewSubjects)&&c.reviewSubjects.length){
+        const names=[];
+        c.reviewSubjects.forEach(r=>{const n=subjNorm(r)||subjFromTitle(r);if(n&&names.indexOf(n)<0)names.push(n)});
+        if(names.length===1)forced=names[0];else if(names.length>1)forced=null;
+      }
+      /* What the file itself claims, before we touch anything. */
+      const own=qs.map(q=>subjNorm(q&&q.s));
+      const counts={};let valid=0,max=0;
+      own.forEach(s=>{if(!s)return;valid++;counts[s]=(counts[s]||0)+1;if(counts[s]>max)max=counts[s]});
+      /* Only a grand paper can be a "dump": a named or small subject test is allowed to have
+         every MCQ in one subject. */
+      const grand=subjGrandName(fileName,title)||qs.length>=150;
+      const dumped=!forced&&grand&&valid>=6&&max/valid>=0.9;
+      qs.forEach((q,i)=>{
         if(!q||typeof q!=='object')return;
-        const cur=subjNorm(q.s);
-        if(cur){if(q.s!==cur){q.s=cur;changed=true}return}
-        const sub=subjClassify(q,ts);
-        q.s=sub;changed=true;
-        if(sub==='Unclassified')anyUnc=true
+        const cur=own[i];
+        let sub;
+        if(forced)sub=forced;                       /* subject test: one bucket for all MCQs */
+        else if(cur&&!dumped)sub=cur;               /* grand test keeps real source subjects */
+        else sub=subjClassify(q,dumped?null:cur);   /* classify, or trust the source's subject */
+        if(!sub)sub='Unclassified';
+        const label=(sub==='Unclassified')?sub:(labelMap[sub]||sub);
+        if(tLabels&&tLabels.indexOf(label)<0)unknown[label]=1;
+        if(q.s!==label){q.s=label;changed=true}
       })
     });
     if(!changed)return text;
     let out=text.slice(0,sp[0])+JSON.stringify(cfg).replace(/</g,'\\u003c')+text.slice(sp[1]);
-    /* the honest group needs a place in the template's subject list (dropdown, score cards
-       and the per-question picker all read it) */
-    if(anyUnc){
-      const m=/(const\s+SUBJECT_LIST\s*=\s*\[[^\]]*)\]/.exec(out);
-      if(m&&m[1].indexOf('Unclassified')<0)out=out.slice(0,m.index+m[1].length)+",'Unclassified']"+out.slice(m.index+m[0].length);
+    /* Every subject actually used — including the honest Unclassified group and any name this
+       template's own list lacks — needs a place in SUBJECT_LIST (the dropdown, score cards and
+       the per-question picker all read it). */
+    const add=Object.keys(unknown);
+    if(add.length){
+      const m=/((?:const|let|var)\s+SUBJECT_LIST\s*=\s*\[[^\]]*)\]/.exec(out);
+      if(m){
+        const have=subjTemplateList(out)||[];
+        const put=add.filter(l=>have.indexOf(l)<0);
+        if(put.length)out=out.slice(0,m.index+m[1].length)+put.map(l=>",'"+String(l).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'").join('')+']'+out.slice(m.index+m[0].length);
+      }
     }
     return out
   }catch(e){return text}}
@@ -887,9 +973,10 @@ async function loadFrame(){
     let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
     if(!f.mcqLookup)text=applyPattern(text);
     S.runner=!!f.mcqLookup||/\bRAW_CFG\s*=/.test(text)||(/id=["']root["']/.test(text)&&/qn-row/.test(text));
-    /* give every question a real subject before the frame renders (grand tests arrive with
-       none, so the template would dump them all into a fake "Medicine" group) */
-    if(!f.mcqLookup&&S.runner)text=applySubjects(text);
+    /* give every question a real subject before the frame renders: a subject test gets its own
+       subject for every MCQ, a grand test is classified question by question (and a paper whose
+       questions all carry the same dumped subject is re-scored instead of trusted) */
+    if(!f.mcqLookup&&S.runner)text=applySubjects(text,f.name);
     const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
     const markup=head?injectHead(text,head):text;
     const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
@@ -1078,6 +1165,7 @@ function marrowFix(){
     try{
       var f=r.querySelector('#fsub');
       if(f&&f.options&&f.options.length){
+        var heal=false;
         for(var i=f.options.length-1;i>=0;i--){
           var o=f.options[i];
           if(o.value==='all'){
@@ -1085,19 +1173,28 @@ function marrowFix(){
           }else if(/\(\s*0\s*\)\s*$/.test(o.textContent||'')){
             /* a saved filter can point at a subject the test lost after re-classification —
                drop the empty option and fall back to All subjects */
-            var was=o.selected;
+            if(o.selected){heal=true;try{f.value='all'}catch(e){}}
             if(f.removeChild)f.removeChild(o);
-            if(was){f.value='all';var ev=null;try{ev=new Event('change')}catch(e){}
-              if(ev&&f.dispatchEvent)f.dispatchEvent(ev)}
           }
+        }
+        /* Re-render after this pass is finished, never from inside it: dispatching change while
+           the review page is being rewritten used to leave the dropdown (and the question card)
+           on a stale subject. */
+        if(heal&&!f.getAttribute('data-hr-heal')){
+          f.setAttribute('data-hr-heal','1');
+          (function(sel){setTimeout(function(){try{var ev=null;try{ev=new Event('change')}catch(e){}
+            if(ev&&sel.dispatchEvent)sel.dispatchEvent(ev)}catch(e){}},0)})(f);
         }
       }
       var spans=r.querySelectorAll('h2.gh span');
       for(var j=0;j<spans.length;j++){
         var t=spans[j].textContent||'';
         if(t.indexOf('19 MBBS Subjects')>=0){
-          var cards=r.querySelectorAll('.sj');
-          var n=cards?cards.length:0;
+          var cards=r.querySelectorAll('.sj'),n=0;
+          for(var c=0;c<cards.length;c++){
+            var h=cards[c].querySelector('h3');
+            if(!/^\s*Unclassified\b/.test(h?h.textContent:''))n++;
+          }
           spans[j].textContent=t.replace('19 MBBS Subjects',n+(n===1?' subject':' subjects'));
         }
       }
