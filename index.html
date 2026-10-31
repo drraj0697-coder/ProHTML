@@ -916,8 +916,8 @@ async function loadFrame(){
    later Start simply continue. Subject tests (title names one subject) are skipped. */
 const SUBJ_AI=(()=>{
   const DBN='html-reader-subjects',ST='subj',FLAG='ai.f.';
-  const DEF={key:'',model:'gemini-2.5-flash-lite',rpm:8,batch:40};
-  const cfg=()=>Object.assign({},DEF,LS.get('ai.cfg',{}));
+  const DEF={key:'',model:'gemini-3.5-flash-lite',rpm:8,batch:40};
+  const cfg=()=>{const c=Object.assign({},DEF,LS.get('ai.cfg',{}));if(c.model==='gemini-2.5-flash-lite')c.model=DEF.model;return c};   /* 2.5 Flash-Lite is closed to new users */
   const st={running:false,stop:false,note:'',err:'',fi:0,fn:0,added:0,missed:0,cached:0};
   let dbp=null,wl=null;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -955,8 +955,8 @@ const SUBJ_AI=(()=>{
   async function call(items,c){
     const body={systemInstruction:{parts:[{text:SYS}]},
       contents:[{role:'user',parts:[{text:'Classify these MCQs.\n'+JSON.stringify(items)}]}],
-      generationConfig:{temperature:0,maxOutputTokens:8192,responseMimeType:'application/json',
-        responseSchema:{type:'ARRAY',items:{type:'OBJECT',properties:{i:{type:'INTEGER'},s:{type:'STRING',enum:SUBJ_NAMES}},required:['i','s']}}}};
+      generationConfig:Object.assign(/^gemini-3/.test(c.model)?{}:{temperature:0},{maxOutputTokens:8192,responseMimeType:'application/json',
+        responseSchema:{type:'ARRAY',items:{type:'OBJECT',properties:{i:{type:'INTEGER'},s:{type:'STRING',enum:SUBJ_NAMES}},required:['i','s']}}})};
     let r;
     try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(c.model)+':generateContent',
       {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':c.key},body:JSON.stringify(body)})}
@@ -965,7 +965,7 @@ const SUBJ_AI=(()=>{
       const x=new Error('Gemini error '+r.status);x.status=r.status;
       let msg='';try{msg=JSON.parse(t).error.message}catch(e){}
       if(r.status===429){x.daily=/PerDay/i.test(t);const m=/"retryDelay":\s*"([\d.]+)s"/.exec(t)||/retry in ([\d.]+)s/i.exec(t);x.retry=m?Math.ceil(+m[1])+2:0}
-      if(r.status===400||r.status===401||r.status===403||r.status===404){x.fatal=true;x.message='Gemini says: '+(msg||('error '+r.status))}
+      if(r.status===400||r.status===401||r.status===403||r.status===404){x.fatal=true;x.message='Gemini says: '+(msg||('error '+r.status))+(/no longer available|not found|not supported|deprecated/i.test(msg)?'  → Type the model name Google suggests into the Model box above, then tap Start again.':'')}
       throw x}
     const j=await r.json();let txt='';
     try{txt=j.candidates[0].content.parts.map(p=>p.text||'').join('')}catch(e){}
@@ -1070,7 +1070,7 @@ const SUBJ_AI=(()=>{
   const html=()=>'<div class="sec"><h2>AI subject classification</h2><div class="card">'+
     '<div class="set"><span class="lb">Classify tests with Gemini<small>One-time run. Reads every grand-test question with its options and explanation, then saves the subject on this device, so review pages open already sorted. Keep this screen open while it runs, and set Auto-Lock to Never. You can stop and continue any time.</small></span></div>'+
     '<div class="set ai-row"><span class="lb">Gemini API key<small>Free from aistudio.google.com/apikey. Stays on this device.</small></span><input class="ai-in" id="aiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…"></div>'+
-    '<div class="set ai-row"><span class="lb">Model<small>Flash-Lite has the highest free limit.</small></span><input class="ai-in" id="aiModel" list="aiModels" autocomplete="off" autocapitalize="off" spellcheck="false"><datalist id="aiModels"><option value="gemini-2.5-flash-lite"><option value="gemini-2.5-flash"></datalist></div>'+
+    '<div class="set ai-row"><span class="lb">Model<small>A light model with the best free limit. If Google says a model is unavailable, type the name it suggests.</small></span><input class="ai-in" id="aiModel" list="aiModels" autocomplete="off" autocapitalize="off" spellcheck="false"><datalist id="aiModels"><option value="gemini-3.5-flash-lite"></datalist></div>'+
     '<div class="set ai-row"><span class="lb">Requests per minute<small>Stay at or below your free limit (aistudio.google.com/rate-limit).</small></span><input class="ai-in sm" id="aiRpm" type="number" inputmode="numeric" min="1" max="60"></div>'+
     '<div class="set ai-row"><span class="lb">Questions per request<small>More is faster; fewer is steadier.</small></span><input class="ai-in sm" id="aiBatch" type="number" inputmode="numeric" min="5" max="80"></div>'+
     '<div class="set"><span class="lb"><small id="aiMsg" style="margin:0"></small><span class="ai-bar"><i id="aiBar"></i></span></span></div>'+
