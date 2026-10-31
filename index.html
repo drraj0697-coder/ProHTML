@@ -851,7 +851,7 @@ function subjClassify(q,titleSubj){
 /* Returns the test HTML with every question given an "s" it can trust (config JSON round-trip,
    same serialization applyPattern uses). Anything the file already classifies correctly comes
    back byte-identical. */
-function applySubjects(text,ai){
+function applySubjects(text,fname,ai){
   try{
     const sp=cfgSpan(text);if(!sp)return text;
     let cfg;try{cfg=JSON.parse(text.slice(sp[0],sp[1]))}catch(e){return text}
@@ -883,6 +883,29 @@ function applySubjects(text,ai){
     return out
   }catch(e){return text}}
 
+async function openFile(id){
+  const f=S.files.find(x=>x.id===id);if(!f)return;
+  if(!(await ensurePattern(f)))return;
+  S.cur=f;S.mode=S.set.display;S.net=S.set.net;
+  $('#rTitle').textContent=clean(f.name);$('#reader').hidden=false;document.body.style.overflow='hidden';
+  setMode(S.mode,true);await loadFrame()}
+async function loadFrame(){
+  const f=S.cur;if(!f)return;
+  try{
+    if(f.mcqLookup)S.mcqNonce=uid();
+    let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
+    if(!f.mcqLookup)text=applyPattern(text);
+    S.runner=!!f.mcqLookup||/\bRAW_CFG\s*=/.test(text)||(/id=["']root["']/.test(text)&&/qn-row/.test(text));
+    /* give every question a real subject before the frame renders (grand tests arrive with
+       none, so the template would dump them all into a fake "Medicine" group) */
+    if(!f.mcqLookup&&S.runner)text=applySubjects(text,f.name,await SUBJ_AI.mapFor(text));
+    const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
+    const markup=head?injectHead(text,head):text;
+    const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
+    if(S.url)URL.revokeObjectURL(S.url);S.url=url;
+    const box=$('#rframe');box.innerHTML='';
+    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',()=>{applyFont();syncTopEdge()});if(f.mcqLookup)fr.srcdoc=markup;else fr.src=url;box.appendChild(fr);applyFont()
+  }catch(e){toast('This file could not be opened: '+e.message)}}
 /* ===== AI subject classification (v15, Gemini, one-time bulk run) =====
    Settings -> "AI subject classification" reads every library test once, sends each question with
    its options and explanation to Gemini in batches, and saves one subject per question in its own
@@ -1069,29 +1092,6 @@ const SUBJ_AI=(()=>{
   return{run,bind,html,mapFor,key:qKey,state:st};
 })();
 
-async function openFile(id){
-  const f=S.files.find(x=>x.id===id);if(!f)return;
-  if(!(await ensurePattern(f)))return;
-  S.cur=f;S.mode=S.set.display;S.net=S.set.net;
-  $('#rTitle').textContent=clean(f.name);$('#reader').hidden=false;document.body.style.overflow='hidden';
-  setMode(S.mode,true);await loadFrame()}
-async function loadFrame(){
-  const f=S.cur;if(!f)return;
-  try{
-    if(f.mcqLookup)S.mcqNonce=uid();
-    let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
-    if(!f.mcqLookup)text=applyPattern(text);
-    S.runner=!!f.mcqLookup||/\bRAW_CFG\s*=/.test(text)||(/id=["']root["']/.test(text)&&/qn-row/.test(text));
-    /* give every question a real subject before the frame renders (grand tests arrive with
-       none, so the template would dump them all into a fake "Medicine" group) */
-    if(!f.mcqLookup&&S.runner)text=applySubjects(text,await SUBJ_AI.mapFor(text));
-    const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
-    const markup=head?injectHead(text,head):text;
-    const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
-    if(S.url)URL.revokeObjectURL(S.url);S.url=url;
-    const box=$('#rframe');box.innerHTML='';
-    const fr=document.createElement('iframe');fr.title=f.name;fr.setAttribute('sandbox',SANDBOX);fr.setAttribute('allow','fullscreen; autoplay; clipboard-read; clipboard-write; geolocation');fr.allowFullscreen=true;fr.addEventListener('load',()=>{applyFont();syncTopEdge()});if(f.mcqLookup)fr.srcdoc=markup;else fr.src=url;box.appendChild(fr);applyFont()
-  }catch(e){toast('This file could not be opened: '+e.message)}}
 /* Font size: on test pages the slider raises the REAL font-size of the question, the options and
    the buttons below them. The page is re-laid-out and re-rendered at the new size — never zoomed,
    scaled or bitmap-stretched — so the font stays completely sharp at every step.
