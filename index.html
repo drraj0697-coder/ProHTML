@@ -776,6 +776,104 @@ function applyPattern(text){
   R('m.sc=m.c*CFG.mc-m.w*CFG.mw;','m.sc=R2(m.c*CFG.mc-m.w*CFG.mw);');
   return out}
 
+/* ===== Subject classification (v14) =====
+   Each question in a test file carries its subject in its own "s" field; questions without a
+   usable one were dumped by the template into a misleading "Medicine" group — which is why
+   grand tests showed every MCQ bunched together. Before the test HTML is handed to the reader
+   frame, this pass gives every question a real subject: known abbreviations are normalized
+   (PSM, OBG, FMT…), then the question, its options and its explanation are scanned for
+   subject-indicating keywords, and a test whose title names exactly one subject adopts it as
+   the fallback. Only what no evidence could place is left "Unclassified" — an honest group the
+   template's subject list is extended with — so the review dropdown and the score summary show
+   only the subjects the test actually contains, and the existing per-question subject picker
+   can still move any question anywhere. Files whose questions all carry a valid subject are
+   returned byte-identical. */
+const SUBJ_NAMES=['Anatomy','Physiology','Biochemistry','Pathology','Pharmacology','Microbiology','Forensic Medicine','Community Medicine (PSM)','ENT','Ophthalmology','Medicine','Surgery','Obstetrics & Gynaecology','Paediatrics','Orthopaedics','Dermatology','Psychiatry','Anaesthesia','Radiology'];
+const SUBJ_ALIAS={'anatomy':'Anatomy','anat':'Anatomy','physiology':'Physiology','physio':'Physiology','biochemistry':'Biochemistry','biochem':'Biochemistry','pathology':'Pathology','path':'Pathology','pharmacology':'Pharmacology','pharma':'Pharmacology','pharmac':'Pharmacology','microbiology':'Microbiology','microbio':'Microbiology','micro':'Microbiology','forensic medicine':'Forensic Medicine','forensic':'Forensic Medicine','fmt':'Forensic Medicine','fm':'Forensic Medicine','community medicine (psm)':'Community Medicine (PSM)','community medicine':'Community Medicine (PSM)','preventive and social medicine':'Community Medicine (PSM)','preventive medicine':'Community Medicine (PSM)','psm':'Community Medicine (PSM)','ent':'ENT','otorhinolaryngology':'ENT','orl':'ENT','ophthalmology':'Ophthalmology','ophthalm':'Ophthalmology','ophthal':'Ophthalmology','medicine':'Medicine','general medicine':'Medicine','surgery':'Surgery','general surgery':'Surgery','surg':'Surgery','obstetrics & gynaecology':'Obstetrics & Gynaecology','obstetrics and gynaecology':'Obstetrics & Gynaecology','obstetrics and gynecology':'Obstetrics & Gynaecology','obstetrics':'Obstetrics & Gynaecology','gynaecology':'Obstetrics & Gynaecology','gynecology':'Obstetrics & Gynaecology','obg':'Obstetrics & Gynaecology','obgyn':'Obstetrics & Gynaecology','obs and gyn':'Obstetrics & Gynaecology','obs & gyn':'Obstetrics & Gynaecology','paediatrics':'Paediatrics','pediatrics':'Paediatrics','paediatric':'Paediatrics','pediatric':'Paediatrics','paeds':'Paediatrics','peds':'Paediatrics','orthopaedics':'Orthopaedics','orthopedics':'Orthopaedics','ortho':'Orthopaedics','dermatology':'Dermatology','derm':'Dermatology','venereology':'Dermatology','skin':'Dermatology','psychiatry':'Psychiatry','psych':'Psychiatry','anaesthesia':'Anaesthesia','anesthesia':'Anaesthesia','anaesthesiology':'Anaesthesia','anesthesiology':'Anaesthesia','radiology':'Radiology','radiodiagnosis':'Radiology','radio':'Radiology'};
+SUBJ_NAMES.forEach(n=>{SUBJ_ALIAS[n.toLowerCase()]=n});
+/* A title only adopts a subject when it names exactly one; short forms are matched on word
+   boundaries so "ENT" never hides inside "Recent". */
+const SUBJ_T_RE=(()=>{const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const list=SUBJ_NAMES.map(n=>[n,new RegExp('\\b'+esc(n.toLowerCase())+'\\b')]);
+  [[/\bpsm\b/,'Community Medicine (PSM)'],[/\bpreventive\b/,'Community Medicine (PSM)'],[/\bforensic\b/,'Forensic Medicine'],[/\bfmt\b/,'Forensic Medicine'],[/\bobg\b/,'Obstetrics & Gynaecology'],[/\bobstetric/,'Obstetrics & Gynaecology'],[/\bgyn[ae]c/,'Obstetrics & Gynaecology'],[/\bent\b/,'ENT'],[/\bophthal/,'Ophthalmology'],[/\bpa?ediat/,'Paediatrics'],[/\bortho(p|e)d/,'Orthopaedics'],[/\bdermat/,'Dermatology'],[/\bpsychiat/,'Psychiatry'],[/\ban?esthesi/,'Anaesthesia'],[/\bradiolog/,'Radiology'],[/\bradiodiag/,'Radiology'],[/\bpharmac/,'Pharmacology'],[/\bmicrobio/,'Microbiology'],[/\bbiochem/,'Biochemistry'],[/\bphysiolog/,'Physiology'],[/\bpatholog/,'Pathology'],[/\banatom/,'Anatomy'],[/\bmedicine\b/,'Medicine'],[/\bsurger/,'Surgery'],[/\bsurgical\b/,'Surgery']].forEach(p=>list.push([p[1],p[0]]));
+  return list})();
+/* Keyword dictionary: [weight, regex] per subject. Weight 3 marks phrases that are close to
+   diagnostic of the subject, 2 strong indicators, 1 supportive terms. A keyword counts once per
+   question however often it repeats, so a long explanation cannot inflate a subject by
+   repetition. Lowercase inputs only. */
+const SUBJ_KW=(()=>{const K={
+Anatomy:[[3,/brachial plexus/],[3,/inguinal canal/],[3,/dermatome/],[3,/anatomical snuffbox/],[3,/cavernous sinus/],[3,/circle of willis/],[3,/popliteal fossa/],[3,/cubital fossa/],[3,/femoral sheath/],[3,/adductor canal/],[3,/ischioanal/],[3,/intervertebral foramen/],[3,/lymphatic drainage/],[3,/nerve supply/],[3,/blood supply of/],[3,/foramen (ovale|rotundum|lacerum|magnum|lacerum)/],[3,/pterygopalatine/],[3,/infratemporal/],[3,/thoracic outlet/],[3,/spermatic cord/],[3,/retromandibular/],[3,/greater sciatic|lesser sciatic/],[3,/anterior (triangle|abdominal wall)|posterior triangle/],[3,/left recurrent laryngeal/],[2,/which muscle/],[2,/origin and insertion/],[2,/sciatic nerve/],[2,/axillary nerve/],[2,/radial nerve/],[2,/median nerve/],[2,/ulnar nerve/],[2,/femoral nerve/],[2,/obturator nerve/],[2,/long thoracic nerve/],[2,/internal capsule/],[2,/spinal cord/],[2,/thalamus|thalamic/],[2,/cerebellar peduncle/],[2,/nucleus ambiguus/],[2,/solitary (tract|nucleus)/],[2,/perineum/],[2,/peritoneum|retroperitoneal/],[2,/inguinal ligament/],[2,/pelvic floor/],[2,/sympathetic chain|stellate ganglion/],[2,/vertebral artery/],[2,/internal thoracic/],[1,/anatomy/],[1,/\bligament\b/],[1,/\bfascia\b/],[1,/\bvertebra/],[1,/\bforamen\b/],[1,/\bplexus\b/],[1,/\bdiaphragm\b/]],
+Physiology:[[3,/action potential/],[3,/glomerular filtration/],[3,/tubular reabsorption/],[3,/starling/],[3,/lung compliance/],[3,/pacemaker potential/],[3,/cardiac output/],[3,/baroreceptor/],[3,/juxtaglomerular/],[3,/refractory period/],[3,/saltatory/],[3,/spirogram/],[3,/vital capacity/],[3,/tidal volume/],[3,/dead space/],[3,/ventilation.?perfusion/],[3,/oxygen.?dissociation/],[3,/bohr effect/],[3,/haldane/],[3,/negative feedback/],[3,/cardiac cycle/],[3,/wiggers/],[3,/einthoven/],[3,/homeostasis/],[3,/countercurrent (multiplier|exchange)/],[3,/insulin secretion/],[2,/depolariz/],[2,/hyperpolariz/],[2,/membrane potential/],[2,/nephron/],[2,/alveol/],[2,/hemoglobin|haemoglobin/],[2,/reabsorption/],[2,/osmolar/],[2,/\bhormone\b/],[2,/receptor/],[2,/second messenger/],[2,/synaptic/],[2,/neuromuscular junction/],[2,/physiolog/],[2,/clearance/],[2,/renal plasma flow/],[2,/pulmonary function|peak (expiratory )?flow/],[2,/surfactant/],[2,/excretion/],[2,/spermatogenesis/],[2,/glucose tolerance/]],
+Biochemistry:[[3,/glycolysis/],[3,/gluconeogenesis/],[3,/krebs|citric acid cycle/],[3,/electron transport/],[3,/oxidative phosphorylation/],[3,/atp synthase/],[3,/urea cycle/],[3,/hmg.?coa/],[3,/mevalonate/],[3,/ketone bodies/],[3,/michaelis.?menten|lineweaver/],[3,/enzyme kinetics/],[3,/allosteric/],[3,/purine|pyrimidine/],[3,/heme synthesis/],[3,/porphyri/],[3,/carnitine/],[3,/orotic acid/],[3,/von gierke|mcardle|pompe disease/],[3,/collagen synthesis/],[3,/gel electrophoresis/],[3,/southern blot|northern blot/],[2,/\benzyme\b/],[2,/substrate/],[2,/cofactor/],[2,/coenzyme/],[2,/amino acid/],[2,/fatty acid oxidation/],[2,/cholesterol/],[2,/triglyceride/],[2,/lipoprotein/],[2,/thiamine|riboflavin|niacin|pyridoxine/],[2,/vitamin (a|d|e|k|c|b12)/],[2,/dna replication/],[2,/rna polymerase/],[2,/protein synthesis/],[2,/\bcodon\b/],[2,/\btranslation\b/],[2,/g6pd/],[2,/metabolic acidosis|metabolic alkalosis/],[2,/bilirubin/],[2,/phenylketonuria/],[2,/fructose|galactose/],[2,/hyperuricemia/],[1,/metabolism/],[1,/\batp\b/]],
+Pathology:[[3,/histopatholog/],[3,/immunohistochem/],[3,/psammoma/],[3,/owl.?eye/],[3,/mallory body/],[3,/russell body/],[3,/reed.?sternberg/],[3,/tumor marker/],[3,/neoplasia|neoplastic/],[3,/dysplasia/],[3,/metasta/],[3,/granuloma/],[3,/caseous|caseation/],[3,/apoptosis/],[3,/karyorrhexis/],[3,/amyloid/],[3,/barrett/],[3,/metaplasia/],[3,/carcinoma in situ/],[3,/periodic acid.?schiff/],[3,/gross (specimen|examination)/],[3,/crescentic/],[3,/\bghon\b/],[3,/hyperchromatic/],[3,/pleomorph/],[3,/nuclear (atypia|inclusion)/],[2,/necrosis/],[2,/infarct/],[2,/\binflammation\b/],[2,/hyperplasia/],[2,/atrophy/],[2,/\btumor\b/],[2,/malignant|benign/],[2,/stain/],[2,/neutrophil|macrophage/],[2,/karyotype|trisomy/],[2,/oncogene|tumor suppressor/],[2,/\bbiopsy\b/],[2,/patholog/],[1,/histolog/]],
+Pharmacology:[[3,/drug of choice/],[3,/mechanism of action/],[3,/adverse effect|adverse drug/],[3,/side.?effect/],[3,/antidote/],[3,/contraindicated/],[3,/first.?line (drug|agent)/],[3,/zero.?order kinetics/],[3,/first.?order kinetics/],[3,/tachyphylaxis/],[3,/bioavailability/],[3,/therapeutic index/],[3,/cytochrome p450|cyp450|cyp3a4/],[3,/enzyme (inducer|inhibitor)/],[3,/\bagonist\b/],[3,/\bantagonist\b/],[3,/partial agonist/],[3,/\bpotency\b/],[3,/\befficacy\b/],[3,/half.?life/],[3,/steady state/],[3,/loading dose/],[3,/maintenance dose/],[3,/pharmacokinetic|pharmacodynamic/],[3,/mg\/kg/],[2,/beta.?blocker/],[2,/ace inhibitor/],[2,/calcium channel blocker/],[2,/\bstatin\b/],[2,/diuretic/],[2,/penicillin/],[2,/aminoglycoside/],[2,/macrolide/],[2,/fluoroquinolone/],[2,/cephalosporin/],[2,/metronidazole/],[2,/warfarin/],[2,/heparin/],[2,/\baspirin\b/],[2,/drug interaction/],[2,/\btablet\b/],[2,/\binjection\b/],[2,/\bsyrup\b/],[2,/receptor (blockade|block)/],[2,/pharmacolog/],[2,/generic name/],[2,/medication/],[2,/\bdose\b/],[1,/\bdrug\b/]],
+Microbiology:[[3,/gram stain|gram.?positive|gram.?negative/],[3,/acid.?fast/],[3,/ziehl/],[3,/cultured? on|culture medium|blood culture/],[3,/\bcolony\b/],[3,/blood agar|macconkey|sabouraud|lowenstein/],[3,/catalase/],[3,/oxidase/],[3,/coagulase/],[3,/bile solubility/],[3,/optochin|novobiocin/],[3,/bacteriophage/],[3,/endotoxin|exotoxin/],[3,/spore.?forming|\bspores\b/],[3,/motility/],[3,/serolog/],[3,/elisa|western blot/],[3,/organism (isolate|is|grows|identified)/],[3,/\bcapsule\b/],[3,/\bflagell/],[3,/mycobacterium/],[3,/\bcandida\b/],[3,/aspergillus/],[2,/\bbacteria\b|\bbacterial\b/],[2,/\bvirus\b|\bviral\b/],[2,/\bfungus\b|\bfungal\b/],[2,/staphylococc/],[2,/streptococc/],[2,/e\.?\s?coli/],[2,/salmonella|shigella/],[2,/\bvibrio\b/],[2,/influenza/],[2,/\bvaccine\b/],[2,/immunoglobulin/],[2,/\bantibody\b|\bantigen\b/],[2,/complement/],[2,/incubation period/],[2,/hepatitis b|hepatitis c/],[2,/\bhiv\b/],[2,/\bdengue\b/],[2,/\bmalaria\b|\bplasmodium/],[2,/leishmania|trypanosom|leprosy/],[2,/\bpcr\b/],[2,/culture/],[2,/sepsis/],[1,/microbio/],[1,/\binfection\b|\binfected\b/]],
+'Forensic Medicine':[[3,/post.?mortem/],[3,/autopsy/],[3,/rigor mortis/],[3,/livor mortis|lividity/],[3,/cadaveric/],[3,/ligature/],[3,/asphyxia/],[3,/strangulat/],[3,/\bhanging\b/],[3,/smothering|throttling/],[3,/diatom/],[3,/medicolegal|medico.?legal/],[3,/inquest/],[3,/\bipc\b|\bcrpc\b|indian penal code/],[3,/exhumation/],[3,/age of (injury|wound)/],[3,/vitreous (humor|sample)/],[3,/putrefaction/],[2,/\bpoisoning\b|\bpoisoned\b/],[2,/\bdeath\b|\bdead body\b|\bdeceased\b/],[2,/\bcourt\b|\btestimony\b|\bwitness\b/],[2,/\bconsent\b/],[2,/\bvictim\b/],[2,/\bpolice\b/],[2,/\bweapon\b/],[2,/\brape\b|sexual assault/],[1,/forensic/]],
+'Community Medicine (PSM)':[[3,/\bprevalence\b/],[3,/\bincidence\b/],[3,/epidemiolog/],[3,/screening (test|programme|for)/],[3,/sensitivity and specificity|(sensitivity|specificity) of the (test|screening)/],[3,/positive predictive|negative predictive/],[3,/cohort stud/],[3,/case.?control/],[3,/randomi[sz]ed (controlled|trial)/],[3,/herd immunity/],[3,/primary health (centre|center)/],[3,/anganwadi/],[3,/\basha\b/],[3,/cold chain/],[3,/notifiable/],[3,/\bepidemic\b|\bendemic\b|\boutbreak\b/],[3,/iodine deficiency/],[3,/national (programme|program|health mission)/],[3,/pulse polio/],[3,/immuni[sz]ation schedule/],[3,/roc curve/],[3,/odds ratio/],[3,/relative risk/],[3,/attributable risk/],[3,/sample size/],[3,/\bsurvey\b/],[3,/health (education|worker|system)/],[2,/vaccination|immuni[sz]ation/],[2,/family planning/],[2,/\bquarantine\b|\bisolation\b/],[2,/chlorinat|sanitation/],[2,/water supply|safe water/],[2,/mid.?day meal/],[2,/vitamin a prophylaxis/],[2,/\bbias\b/],[2,/maternal (mortality|and child)/],[2,/infant mortality|neonatal mortality|under.?five mortality/],[2,/\bpsm\b|preventive and social/],[2,/public health/],[2,/health (centre|center|post|clinic)/],[1,/community medicine|community health/]],
+ENT:[[3,/hearing loss|deafness/],[3,/otitis media/],[3,/tympanic membrane/],[3,/epistaxis/],[3,/tonsill/],[3,/sinusitis/],[3,/cochlear/],[3,/audiometry|pure tone|speech (discrimination|reception)/],[3,/\brinne\b|\bweber test\b/],[3,/cholesteatoma/],[3,/otosclerosis/],[3,/mastoid/],[3,/ear discharge|otalgia|otorrhoea|otorrhea/],[3,/nasal (polyp|septum)|septoplasty/],[3,/\blaryngitis\b|\blarynx\b/],[3,/hoarseness|hoarse voice/],[3,/foreign body (in the )?(nose|ear)/],[3,/\bcroup\b/],[2,/vertigo|tinnitus/],[2,/\bparotid\b/],[2,/adenoid/],[2,/pharyngitis|sore throat/],[2,/endoscopic sinus|\bfess\b/],[2,/bell'?s palsy/],[2,/nose bleed/],[1,/\bear\b/],[1,/\bnose\b|\bnasal\b/],[1,/throat/],[1,/\bent\b/]],
+Ophthalmology:[[3,/\bfundus\b/],[3,/cornea|corneal/],[3,/\bcataract\b/],[3,/glaucoma/],[3,/conjunctiv/],[3,/optic disc/],[3,/\bmacula|r macular\b/],[3,/visual field/],[3,/intraocular|ocular pressure/],[3,/tonometry/],[3,/slit lamp/],[3,/keratoconus|keratitis|keratoplasty/],[3,/uveitis|iritis|cyclitis/],[3,/retinal|retinopathy/],[3,/papilledema/],[3,/\bsquint\b|esotropia|exotropia|strabismus/],[3,/amblyopia/],[3,/trachoma|xerophthalmia/],[3,/\bstye\b|hordeolum|chalazion/],[3,/dacryocyst/],[2,/\beye\b|\beyes\b/],[2,/vision|visual acuity|blindness/],[2,/red eye|watering/],[3,/\bptosis\b/],[3,/nystagmus/],[3,/\bpupil\b|pupillary/],[2,/colou?r blindness|ishihara/],[2,/\bsnellen\b/],[2,/proptosis|exophthalmos/],[1,/ophthalm/]],
+Medicine:[[3,/diabetes mellitus|diabetic/],[3,/hypertension/],[3,/myocardial infarction|\bangina\b|heart failure|atrial fibrillation|arrhythmia/],[3,/\becg\b|\bekg\b|electrocardio/],[3,/chest pain/],[3,/anemia|anaemia|polycythemia/],[3,/thalassemia/],[3,/jaundice|hepatitis|cirrhosis|liver disease/],[3,/\bcopd\b|\basthma\b|bronchiectasis|emphysema/],[3,/pleural effusion/],[3,/stroke|hemiplegia|hemiparesis|paraplegia/],[3,/parkinson|epilepsy|seizure/],[3,/meningitis|encephalitis/],[3,/hypothyroid|hyperthyroid|thyrotoxic|thyroid function/],[3,/cushing|addison|acromegaly|diabetes insipidus/],[3,/\bsle\b|\blupus\b|vasculitis/],[3,/rheumatoid/],[3,/gout|hyperuricemia/],[3,/nephrotic|nephritic|chronic kidney|\bckd\b|dialysis|renal failure/],[3,/\bibd\b|crohn|ulcerative colitis/],[3,/peptic ulcer|gastroesophageal|\bgerd\b/],[3,/diarrhea|diarrhoea|dysentery/],[3,/\bmalaria\b|\bdengue\b|typhoid|leptospirosis/],[3,/tuberculosis|\btb\b|\bhiv\b/],[3,/leukemia|lymphoma|platelet count|hemophilia|haemophilia/],[3,/dyspnea|dyspnoea|breathlessness/],[2,/\bfever\b|febrile/],[2,/cough|hemoptysis|haemoptysis/],[2,/weight loss/],[2,/palpitation/],[2,/\bpallor\b/],[2,/edema|oedema/],[2,/examination reveals|examination shows|on examination/],[2,/\bcreatinine\b|blood urea/],[2,/electrolyte|hyponatremia|hyperkalemia|hypokalemia/],[2,/oral (hypoglycemic|glucose)/],[2,/wilson disease|hemochromatosis/]],
+Surgery:[[3,/acute abdomen/],[3,/peritonitis/],[3,/appendicitis|appendicular/],[3,/cholecystitis|gall.?stone|choledocholithiasis/],[3,/\bhernia\b|hernioplasty|herniorrhaphy/],[3,/laparotomy|laparoscop/],[3,/intestinal obstruction|gastric outlet obstruction|volvulus/],[3,/whipple|pancreaticoduodenectomy/],[3,/thyroidectomy/],[3,/mastectomy|breast lump|breast mass|breast cancer/],[3,/varicose/],[3,/fistula in ano|anal fissure|hemorrhoid|haemorrhoid|\bpiles\b/],[3,/murphy'?s? sign/],[3,/mcburney/],[3,/obstructive jaundice|surgical jaundice/],[3,/splenic (rupture|injury)|liver (injury|laceration)/],[3,/intercostal drain|chest tube/],[3,/\bburns\b|burn wound/],[3,/debridement/],[3,/gas gangrene/],[3,/testicular torsion|hydrocele|varicocele/],[3,/renal colic|urolithiasis|urinary (stone|calculi)/],[3,/urethral (injury|stricture)/],[3,/diverticul/],[3,/anastomotic leak|\banastomosis\b/],[2,/surgical|operated|post.?operative/],[2,/\boperation\b|\bsurgery\b/],[2,/incision|suture/],[2,/\babscess\b|drainage of/],[2,/\bwound\b/],[2,/colostomy|ileostomy|\bstoma\b/],[2,/\bprostate\b|\bturp\b|retention of urine/],[2,/\bscrotal?\b/],[2,/exploratory/],[2,/per rectal|digital rectal/],[2,/palpable mass|abdominal lump/],[1,/\bsurgeon\b/]],
+'Obstetrics & Gynaecology':[[3,/pregnan|gravid|multipara|primipara/],[3,/\blabour\b|\blabor\b/],[3,/caesarean|cesarean|cesarian|caesarian|\blscs\b/],[3,/placenta|placental/],[3,/\buterus\b|\buterine\b/],[3,/ovarian|ovary/],[3,/\bcervix\b|cervical/],[3,/menstrual|amenorrh|menorrhagia|dysmenorrh|oligomenorrh/],[3,/trimester/],[3,/abort?ion|aborted/],[3,/preeclampsia|eclampsia|gestational (hypertension|diabetes)/],[3,/partogram/],[3,/lochia|puerper|postpartum|involution/],[3,/forceps|ventouse|vacuum delivery/],[3,/episiotomy/],[3,/obstetric/],[3,/gynaecolog|gynecolog/],[3,/\biucd\b|\biud\b|copper t|oral contraceptive/],[3,/pcod|pcos|fibroid|leiomyoma/],[3,/ectopic/],[3,/breech|occiput|vertex|cord prolapse/],[3,/\bapgar\b/],[3,/antenatal|intrauterine/],[3,/menopause|hormone replacement/],[3,/infertility|ovulation/],[3,/contraception/],[2,/\bvagina\b|vaginal/],[2,/delivery/],[2,/\bfetus\b|\bfoetus\b|fetal heart/],[2,/breastfeeding|breast feeding|lactation/],[2,/hystere/],[3,/dilatation and curettage|\bd&c\b/],[1,/\bobg\b/]],
+Paediatrics:[[3,/neonate|neonatal|newborn/],[3,/low birth weight|preterm|premature (baby|infant|birth)|prematurity/],[3,/\bkawasaki\b/],[3,/bronchiolitis/],[3,/intussusception/],[3,/milestone|developmental (assessment|delay)/],[3,/paediatric|pediatric/],[3,/birth (weight|asphyxia|injury)/],[3,/neonatal (jaundice|sepsis|resuscitation)/],[3,/exclusive breastfeeding|weaning/],[3,/childhood (leukemia|malignancy|cancer)/],[2,/\binfant\b/],[2,/immuni[sz]ation|vaccination/],[2,/breastfed|breast feeding/],[2,/\bcongenital\b/],[2,/\bchild\b|\bchildren\b|\bchildhood\b/],[2,/\bapgar\b/],[2,/down syndrome|trisomy 21/],[2,/growth chart|weight for age|height for age/],[2,/ambiguous genitalia/],[2,/school health/],[2,/years?[- ]old|\bmonths?[- ]old\b/],[1,/\bboy\b|\bgirl\b/]],
+Orthopaedics:[[3,/fracture|fractured/],[3,/dislocation|dislocated/],[3,/open reduction|internal fixation|\borif\b/],[3,/femur neck|shaft of (femur|tibia|humerus)/],[3,/\bcolles\b|monteggia|galeazzi/],[3,/\bclavicle\b/],[3,/slipped capital|\bddh\b|developmental dysplasia/],[3,/scoliosis|kyphosis|lordosis/],[3,/prolapsed intervertebral|disc (herniation|prolapse)/],[3,/sciatica|lumbar canal stenosis|radiculopathy/],[3,/osteosarcoma|ewing|\bone tumor\b|osteochondroma/],[3,/osteomyelitis/],[3,/septic arthritis/],[3,/avascular necrosis/],[3,/non.?union|malunion|delayed union/],[3,/arthroscopy|arthroplasty|total (knee|hip) replacement|\btkr\b|\bthr\b/],[3,/\bclubfoot\b|talipes|ctev/],[3,/bone (pain|mass|cyst|tumor)/],[3,/genu (varum|valgum)|bow legs|knock knees/],[3,/\bpatella\b/],[3,/spinal (fracture|injury)/],[2,/orthopedic|orthopaedic|\bortho\b/],[2,/plaster|\bcast\b/],[2,/\btibia\b|\bfemur\b|\bhumerus\b|\bradius\b|\bulna\b/],[2,/\bbone\b/],[2,/deformity of (limb|leg|hand)/],[2,/\bback (pain|ache)\b/],[2,/amputation/],[2,/limb (length|weakness)/]],
+Dermatology:[[3,/psoriasis/],[3,/\beczema\b|dermatitis/],[3,/pemphigus|pemphigoid/],[3,/urticaria|hives/],[3,/lichen planus/],[3,/vitiligo|leucoderma/],[3,/\balopecia\b/],[3,/\bacne\b/],[3,/\bmacule\b|\bpapule\b|\bvesicle\b|\bbulla\b|\bwheal\b/],[3,/koebner/],[3,/nikolsky/],[3,/wood'?s? lamp/],[3,/drug eruption|erythema multiforme|stevens.?johnson|toxic epidermal/],[3,/\bscabies\b/],[3,/\btinea\b|onychomycosis/],[3,/pityriasis/],[3,/ichthyosis/],[3,/melanoma/],[3,/keloid|hypertrophic scar/],[3,/seborrheic/],[3,/hypopigmented (patch|lesion|plaque)/],[2,/rash/],[2,/itching|pruritus|pruritic/],[2,/skin (lesion|patch|plaque|biopsy|examination)/],[2,/\bnail\b|nails/],[2,/mucocutaneous|mucosal lesion/],[2,/hypopigment|hyperpigment/],[2,/dermatolog/],[2,/\bskin\b/]],
+Psychiatry:[[3,/delusion/],[3,/hallucination/],[3,/schizophrenia|schizophreniform/],[3,/electroconvulsive/],[3,/suicid/],[3,/catatonia|catatonic/],[3,/psychosis|psychotic/],[3,/neurosis|neurotic/],[3,/bipolar|\bmania\b|manic/],[3,/\bocd\b|obsessive/],[3,/panic attack|panic disorder/],[3,/anxiety disorder|generalized anxiety/],[3,/mental retardation|intellectual disability/],[3,/malingering/],[3,/fugue|dissociative (disorder|identity|amnesia)/],[3,/conversion disorder/],[3,/personality disorder/],[3,/substance (abuse|dependence|use disorder)/],[3,/alcohol (dependence|withdrawal|use)/],[3,/opioid (dependence|withdrawal)/],[3,/antipsychotic|antidepressant|ssri/],[3,/\blithium\b/],[3,/thought (disorder|insertion|broadcasting)/],[3,/withdrawal symptoms/],[2,/depression|depressive/],[2,/\bmood\b/],[2,/psychiatric|psychiatr/],[2,/\bmental\b/],[2,/counseling|psychotherapy/],[2,/\binsomnia\b/]],
+Anaesthesia:[[3,/anaesthesia|anesthesia/],[3,/anaesthetic|anesthetic/],[3,/intubation|extubation/],[3,/laryngeal mask/],[3,/spinal (anaesthesia|anesthesia|block)|epidural (anaesthesia|anesthesia|block|analgesia)/],[3,/nerve block/],[3,/\bsedation\b/],[3,/muscle relaxant|neuromuscular blockade/],[3,/succinylcholine|suxamethonium/],[3,/\bpropofol\b|\bketamine\b|thiopentone|thiopental/],[3,/halothane|sevoflurane|isoflurane|desflurane/],[3,/difficult airway|airway management/],[3,/cricoid/],[3,/rapid sequence/],[3,/\bventilator\b|mechanical ventilation/],[3,/resuscitation|\bcpr\b|cardiopulmonary resuscitation/],[3,/pulse oximet/],[3,/capnograph|end.?tidal co2|etco2/],[3,/regional (anaesthesia|anesthesia|block)/],[3,/\bcpap\b|non.?invasive ventilation/],[2,/\bairway\b/],[2,/\bicu\b|intensive care|critically ill/],[2,/postoperative pain|analgesia/],[2,/oxygen saturation|\bspo2\b/]],
+Radiology:[[3,/x.?ray (shows|of|reveals|film)/],[3,/chest x.?ray/],[3,/\bct\b (scan|shows|abdomen|chest|head|findings)|computed tomography/],[3,/\bmri\b (scan|shows|of|findings)|magnetic resonance/],[3,/ultrasound (shows|of|scan)|\busg\b (shows|of|scan)|sonograph/],[3,/radiograph/],[3,/imaging (shows|reveals|of choice|findings)/],[3,/contrast (enhanced|study|enhancement)/],[3,/hounsfield/],[3,/barium (swallow|meal|enema|follow)/],[3,/angiograph/],[3,/mammograph/],[3,/\bpet\b (scan|ct)|pet.?ct/],[3,/\bivp\b|\bivu\b|intravenous urography/],[3,/finding in the given (image|x.?ray|ct|mri|scan|usg|ultrasound)/],[3,/given (x.?ray|ct|mri|usg|scan)/],[3,/identify the (finding|abnormality|sign)/],[2,/radiolog/],[2,/\bimaging\b/],[2,/scan shows/],[2,/radiopaque|radio.?opaque/],[2,/\bx.?ray\b/]]
+};
+  const out={};for(const s in K)out[s]=K[s];return out})();
+function subjNorm(s){if(typeof s!=='string'||!s.trim())return null;return SUBJ_ALIAS[s.trim().toLowerCase()]||null}
+function subjFromTitle(t){
+  if(typeof t!=='string'||!t)return null;
+  const low=t.toLowerCase();const found=[];
+  for(let i=0;i<SUBJ_T_RE.length;i++){if(SUBJ_T_RE[i][1].test(low)&&found.indexOf(SUBJ_T_RE[i][0])<0)found.push(SUBJ_T_RE[i][0])}
+  return found.length===1?found[0]:null}
+function subjClassify(q,titleSubj){
+  const o=Array.isArray(q&&q.o)?q.o:[];
+  const text=String((q&&q.q)||'')+' '+o.join(' ')+' '+String((q&&q.e)||'');
+  const low=text.toLowerCase().replace(/<[^>]*>/g,' ');
+  let best=null,top=0,second=0;
+  for(const s in SUBJ_KW){
+    let v=0;const ks=SUBJ_KW[s];
+    for(let i=0;i<ks.length;i++)if(ks[i][1].test(low))v+=ks[i][0];
+    if(v>0){if(v>top){second=top;top=v;best=s}else if(v>second)second=v}
+  }
+  if(best&&((top>=3&&top-second>=2)||(top>=6&&top-second>=1)))return best;
+  return titleSubj||'Unclassified'}
+/* Returns the test HTML with every question given an "s" it can trust (config JSON round-trip,
+   same serialization applyPattern uses). Anything the file already classifies correctly comes
+   back byte-identical. */
+function applySubjects(text){
+  try{
+    const sp=cfgSpan(text);if(!sp)return text;
+    let cfg;try{cfg=JSON.parse(text.slice(sp[0],sp[1]))}catch(e){return text}
+    const list=Array.isArray(cfg&&cfg.tests)?cfg.tests:[cfg];
+    if(!list.some(c=>c&&Array.isArray(c.questions)))return text;
+    let changed=false,anyUnc=false;
+    list.forEach(c=>{
+      if(!c||!Array.isArray(c.questions))return;
+      const ts=subjFromTitle(c.title||c.brand||'');
+      c.questions.forEach(q=>{
+        if(!q||typeof q!=='object')return;
+        const cur=subjNorm(q.s);
+        if(cur){if(q.s!==cur){q.s=cur;changed=true}return}
+        const sub=subjClassify(q,ts);
+        q.s=sub;changed=true;
+        if(sub==='Unclassified')anyUnc=true
+      })
+    });
+    if(!changed)return text;
+    let out=text.slice(0,sp[0])+JSON.stringify(cfg).replace(/</g,'\\u003c')+text.slice(sp[1]);
+    /* the honest group needs a place in the template's subject list (dropdown, score cards
+       and the per-question picker all read it) */
+    if(anyUnc){
+      const m=/(const\s+SUBJECT_LIST\s*=\s*\[[^\]]*)\]/.exec(out);
+      if(m&&m[1].indexOf('Unclassified')<0)out=out.slice(0,m.index+m[1].length)+",'Unclassified']"+out.slice(m.index+m[0].length);
+    }
+    return out
+  }catch(e){return text}}
+
 async function openFile(id){
   const f=S.files.find(x=>x.id===id);if(!f)return;
   if(!(await ensurePattern(f)))return;
@@ -789,6 +887,9 @@ async function loadFrame(){
     let text=f.mcqLookup?mcqLookup.buildHTML(f.mcqQuestion,S.mcqNonce):decodeBytes(await f.blob.arrayBuffer());
     if(!f.mcqLookup)text=applyPattern(text);
     S.runner=!!f.mcqLookup||/\bRAW_CFG\s*=/.test(text)||(/id=["']root["']/.test(text)&&/qn-row/.test(text));
+    /* give every question a real subject before the frame renders (grand tests arrive with
+       none, so the template would dump them all into a fake "Medicine" group) */
+    if(!f.mcqLookup&&S.runner)text=applySubjects(text);
     const head=zoomTag()+(S.net?'':CSP_OFF)+(S.net&&S.set.fix?'<meta name="referrer" content="no-referrer">'+imgfixTag:'')+(S.set.fmt&&!f.builtin?fmtTag:'');
     const markup=head?injectHead(text,head):text;
     const url=f.mcqLookup?null:URL.createObjectURL(new Blob([markup],{type:'text/html;charset=utf-8'}));
@@ -971,6 +1072,42 @@ function marrowFix(){
       if(o.scrollHeight>o.clientHeight+1)o.style.setProperty('height','auto','important');
     }
   }
+  /* The template hard-codes "19 MBBS Subjects" everywhere and lists all 19 subjects in the
+     review dropdown even when the test contains none of them. Show only what the test has. */
+  function mwSubjUI(r){
+    try{
+      var f=r.querySelector('#fsub');
+      if(f&&f.options&&f.options.length){
+        for(var i=f.options.length-1;i>=0;i--){
+          var o=f.options[i];
+          if(o.value==='all'){
+            if(o.textContent.indexOf('All 19 MBBS Subjects')>=0)o.textContent=o.textContent.replace('All 19 MBBS Subjects','All subjects');
+          }else if(/\(\s*0\s*\)\s*$/.test(o.textContent||'')){
+            /* a saved filter can point at a subject the test lost after re-classification —
+               drop the empty option and fall back to All subjects */
+            var was=o.selected;
+            if(f.removeChild)f.removeChild(o);
+            if(was){f.value='all';var ev=null;try{ev=new Event('change')}catch(e){}
+              if(ev&&f.dispatchEvent)f.dispatchEvent(ev)}
+          }
+        }
+      }
+      var spans=r.querySelectorAll('h2.gh span');
+      for(var j=0;j<spans.length;j++){
+        var t=spans[j].textContent||'';
+        if(t.indexOf('19 MBBS Subjects')>=0){
+          var cards=r.querySelectorAll('.sj');
+          var n=cards?cards.length:0;
+          spans[j].textContent=t.replace('19 MBBS Subjects',n+(n===1?' subject':' subjects'));
+        }
+      }
+      var ps=r.querySelectorAll('.page p');
+      for(var k=0;k<ps.length;k++){
+        var pt=ps[k].textContent||'';
+        if(pt.indexOf('19 MBBS subjects')>=0)ps[k].textContent=pt.replace(/\s*·\s*19 MBBS subjects/,'');
+      }
+    }catch(e){}
+  }
   function fix(){
     var r=document.getElementById('root');
     if(!r)return;
@@ -1054,6 +1191,7 @@ function marrowFix(){
     var q=r.querySelector('.qn'),t=q?q.textContent:'';
     if(t!==mwLast){mwLast=t;mwScroll=0;if(main)main.scrollTop=0;r.scrollTop=0;window.scrollTo(0,0)}
     else if(main&&mwScroll>0)main.scrollTop=mwScroll;
+    mwSubjUI(r);
     fitOpts(r);
   }
   function go(){
